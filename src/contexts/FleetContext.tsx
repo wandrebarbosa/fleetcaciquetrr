@@ -1,6 +1,60 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Filial, Motorista, Servico, Veiculo, Manutencao, TipoManutencao } from '@/types/fleet';
-import { filiais as mockFiliais, motoristas as mockMotoristas, servicos as mockServicos, veiculos as mockVeiculos, manutencoes as mockManutencoes } from '@/data/mockData';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+// Types matching the DB schema
+export interface Filial {
+  id: string;
+  nome: string;
+  cidade: string;
+  estado: string;
+}
+
+export interface Motorista {
+  id: string;
+  nome: string;
+  cpf: string;
+  telefone: string;
+  filial_id: string | null;
+}
+
+export interface Servico {
+  id: string;
+  nome: string;
+  tipo: 'preventiva' | 'corretiva';
+}
+
+export interface Veiculo {
+  id: string;
+  placa: string;
+  tipo: string;
+  filial_id: string | null;
+  motorista_id: string | null;
+  km_atual: number;
+  km_proxima_preventiva: number;
+  intervalo_preventiva: number;
+  status: 'disponivel' | 'em_ocorrencia' | 'finalizada';
+  manutencao_ativa_id: string | null;
+  data_parada: string | null;
+  previsao_retorno: string | null;
+  updated_at: string;
+}
+
+export interface Manutencao {
+  id: string;
+  veiculo_id: string;
+  tipo_manutencao: 'preventiva' | 'corretiva';
+  grupo_servicos: string[];
+  km_registrado: number;
+  solicitante: string;
+  fornecedores: string;
+  data_inicio: string;
+  data_fim: string | null;
+  tempo_parado_horas: number | null;
+  observacoes: string;
+  status: 'aberta' | 'finalizada';
+  created_at: string;
+}
 
 interface FleetContextType {
   veiculos: Veiculo[];
@@ -8,132 +62,171 @@ interface FleetContextType {
   filiais: Filial[];
   motoristas: Motorista[];
   servicos: Servico[];
-  addVeiculo: (v: Omit<Veiculo, 'id' | 'updatedAt'>) => void;
-  updateVeiculo: (id: string, v: Partial<Veiculo>) => void;
-  deleteVeiculo: (id: string) => void;
-  addManutencao: (m: Omit<Manutencao, 'id' | 'createdAt'>) => void;
-  finalizarManutencao: (id: string) => void;
-  addFilial: (f: Omit<Filial, 'id'>) => void;
-  updateFilial: (id: string, f: Partial<Filial>) => void;
-  deleteFilial: (id: string) => void;
-  addMotorista: (m: Omit<Motorista, 'id'>) => void;
-  updateMotorista: (id: string, m: Partial<Motorista>) => void;
-  deleteMotorista: (id: string) => void;
-  addServico: (s: Omit<Servico, 'id'>) => void;
-  deleteServico: (id: string) => void;
+  loading: boolean;
+  refresh: () => Promise<void>;
+  addVeiculo: (v: Partial<Veiculo>) => Promise<void>;
+  deleteVeiculo: (id: string) => Promise<void>;
+  addManutencao: (m: Partial<Manutencao> & { previsao_retorno?: string }) => Promise<void>;
+  finalizarManutencao: (id: string) => Promise<void>;
+  addFilial: (f: Partial<Filial>) => Promise<void>;
+  deleteFilial: (id: string) => Promise<void>;
+  addMotorista: (m: Partial<Motorista>) => Promise<void>;
+  deleteMotorista: (id: string) => Promise<void>;
+  addServico: (s: Partial<Servico>) => Promise<void>;
+  deleteServico: (id: string) => Promise<void>;
 }
 
 const FleetContext = createContext<FleetContextType | null>(null);
 
-let idCounter = 100;
-const genId = (prefix: string) => `${prefix}${++idCounter}`;
-
 export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [veiculos, setVeiculos] = useState<Veiculo[]>(mockVeiculos);
-  const [manutencoes, setManutencoes] = useState<Manutencao[]>(mockManutencoes);
-  const [filiais, setFiliais] = useState<Filial[]>(mockFiliais);
-  const [motoristas, setMotoristas] = useState<Motorista[]>(mockMotoristas);
-  const [servicos, setServicos] = useState<Servico[]>(mockServicos);
+  const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
+  const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
+  const [filiais, setFiliais] = useState<Filial[]>([]);
+  const [motoristas, setMotoristas] = useState<Motorista[]>([]);
+  const [servicos, setServicos] = useState<Servico[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const addVeiculo = useCallback((v: Omit<Veiculo, 'id' | 'updatedAt'>) => {
-    setVeiculos(prev => [...prev, { ...v, id: genId('v'), updatedAt: new Date().toISOString() }]);
+  const refresh = useCallback(async () => {
+    const [fRes, mRes, sRes, vRes, manRes] = await Promise.all([
+      supabase.from('filiais').select('*'),
+      supabase.from('motoristas').select('*'),
+      supabase.from('servicos').select('*'),
+      supabase.from('frota_status_atual').select('*'),
+      supabase.from('manutencoes').select('*').order('created_at', { ascending: false }),
+    ]);
+    if (fRes.data) setFiliais(fRes.data as Filial[]);
+    if (mRes.data) setMotoristas(mRes.data as Motorista[]);
+    if (sRes.data) setServicos(sRes.data as Servico[]);
+    if (vRes.data) setVeiculos(vRes.data as Veiculo[]);
+    if (manRes.data) setManutencoes(manRes.data as Manutencao[]);
+    setLoading(false);
   }, []);
 
-  const updateVeiculo = useCallback((id: string, updates: Partial<Veiculo>) => {
-    setVeiculos(prev => prev.map(v => v.id === id ? { ...v, ...updates, updatedAt: new Date().toISOString() } : v));
-  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
 
-  const deleteVeiculo = useCallback((id: string) => {
-    setVeiculos(prev => prev.filter(v => v.id !== id));
-  }, []);
-
-  const addManutencao = useCallback((m: Omit<Manutencao, 'id' | 'createdAt'>) => {
-    const id = genId('man');
-    const now = new Date().toISOString();
-    setManutencoes(prev => [...prev, { ...m, id, createdAt: now }]);
-    // Update vehicle status
-    setVeiculos(prev => prev.map(v => v.id === m.veiculoId ? {
-      ...v,
-      status: 'em_ocorrencia' as const,
-      manutencaoAtivaId: id,
-      kmAtual: m.kmRegistrado,
-      dataParada: m.dataInicio,
-      previsaoRetorno: undefined,
-      updatedAt: now,
-    } : v));
-  }, []);
-
-  const finalizarManutencao = useCallback((id: string) => {
-    const now = new Date();
-    setManutencoes(prev => prev.map(m => {
-      if (m.id !== id) return m;
-      const inicio = new Date(m.dataInicio);
-      const horas = Math.round((now.getTime() - inicio.getTime()) / (1000 * 60 * 60) * 10) / 10;
-      return { ...m, status: 'finalizada' as const, dataFim: now.toISOString(), tempoParadoHoras: horas };
-    }));
-    // Find the maintenance to get vehicle id
-    setManutencoes(prev => {
-      const man = prev.find(m => m.id === id);
-      if (man) {
-        setVeiculos(vPrev => vPrev.map(v => {
-          if (v.id !== man.veiculoId) return v;
-          const nextKm = man.tipoManutencao === 'preventiva'
-            ? v.kmAtual + v.intervaloPreventiva
-            : v.kmProximaPreventiva;
-          return {
-            ...v,
-            status: 'disponivel' as const,
-            manutencaoAtivaId: undefined,
-            dataParada: undefined,
-            previsaoRetorno: undefined,
-            kmProximaPreventiva: nextKm,
-            updatedAt: now.toISOString(),
-          };
-        }));
-      }
-      return prev;
+  const addVeiculo = useCallback(async (v: Partial<Veiculo>) => {
+    const { error } = await supabase.from('frota_status_atual').insert({
+      placa: v.placa!,
+      tipo: v.tipo || '',
+      filial_id: v.filial_id || null,
+      motorista_id: v.motorista_id || null,
+      km_atual: v.km_atual || 0,
+      km_proxima_preventiva: v.km_proxima_preventiva || 30000,
+      intervalo_preventiva: v.intervalo_preventiva || 30000,
+      status: 'disponivel',
     });
-  }, []);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
 
-  const addFilial = useCallback((f: Omit<Filial, 'id'>) => {
-    setFiliais(prev => [...prev, { ...f, id: genId('f') }]);
-  }, []);
+  const deleteVeiculo = useCallback(async (id: string) => {
+    const { error } = await supabase.from('frota_status_atual').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
 
-  const updateFilial = useCallback((id: string, updates: Partial<Filial>) => {
-    setFiliais(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
-  }, []);
+  const addManutencao = useCallback(async (m: Partial<Manutencao> & { previsao_retorno?: string }) => {
+    // Insert maintenance record
+    const { data, error } = await supabase.from('manutencoes').insert({
+      veiculo_id: m.veiculo_id!,
+      tipo_manutencao: m.tipo_manutencao || 'corretiva',
+      grupo_servicos: m.grupo_servicos || [],
+      km_registrado: m.km_registrado || 0,
+      solicitante: m.solicitante || '',
+      fornecedores: m.fornecedores || '',
+      data_inicio: m.data_inicio || new Date().toISOString(),
+      observacoes: m.observacoes || '',
+      status: 'aberta',
+    }).select().single();
+    if (error) { toast.error(error.message); return; }
 
-  const deleteFilial = useCallback((id: string) => {
-    setFiliais(prev => prev.filter(f => f.id !== id));
-  }, []);
+    // Update vehicle status
+    await supabase.from('frota_status_atual').update({
+      status: 'em_ocorrencia',
+      manutencao_ativa_id: data.id,
+      km_atual: m.km_registrado || 0,
+      data_parada: m.data_inicio || new Date().toISOString(),
+      previsao_retorno: m.previsao_retorno || null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', m.veiculo_id!);
 
-  const addMotorista = useCallback((m: Omit<Motorista, 'id'>) => {
-    setMotoristas(prev => [...prev, { ...m, id: genId('m') }]);
-  }, []);
+    await refresh();
+  }, [refresh]);
 
-  const updateMotorista = useCallback((id: string, updates: Partial<Motorista>) => {
-    setMotoristas(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
-  }, []);
+  const finalizarManutencao = useCallback(async (id: string) => {
+    const man = manutencoes.find(m => m.id === id);
+    if (!man) return;
+    const now = new Date();
+    const inicio = new Date(man.data_inicio);
+    const horas = Math.round((now.getTime() - inicio.getTime()) / (1000 * 60 * 60) * 10) / 10;
 
-  const deleteMotorista = useCallback((id: string) => {
-    setMotoristas(prev => prev.filter(m => m.id !== id));
-  }, []);
+    await supabase.from('manutencoes').update({
+      status: 'finalizada',
+      data_fim: now.toISOString(),
+      tempo_parado_horas: horas,
+    }).eq('id', id);
 
-  const addServico = useCallback((s: Omit<Servico, 'id'>) => {
-    setServicos(prev => [...prev, { ...s, id: genId('s') }]);
-  }, []);
+    // Get vehicle to calculate next preventive
+    const veiculo = veiculos.find(v => v.id === man.veiculo_id);
+    const nextKm = man.tipo_manutencao === 'preventiva' && veiculo
+      ? veiculo.km_atual + veiculo.intervalo_preventiva
+      : veiculo?.km_proxima_preventiva || 0;
 
-  const deleteServico = useCallback((id: string) => {
-    setServicos(prev => prev.filter(s => s.id !== id));
-  }, []);
+    await supabase.from('frota_status_atual').update({
+      status: 'disponivel',
+      manutencao_ativa_id: null,
+      data_parada: null,
+      previsao_retorno: null,
+      km_proxima_preventiva: nextKm,
+      updated_at: now.toISOString(),
+    }).eq('id', man.veiculo_id);
+
+    await refresh();
+  }, [refresh, manutencoes, veiculos]);
+
+  const addFilial = useCallback(async (f: Partial<Filial>) => {
+    const { error } = await supabase.from('filiais').insert({ nome: f.nome!, cidade: f.cidade || '', estado: f.estado || 'SP' });
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
+
+  const deleteFilial = useCallback(async (id: string) => {
+    const { error } = await supabase.from('filiais').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
+
+  const addMotorista = useCallback(async (m: Partial<Motorista>) => {
+    const { error } = await supabase.from('motoristas').insert({ nome: m.nome!, cpf: m.cpf || '', telefone: m.telefone || '', filial_id: m.filial_id || null });
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
+
+  const deleteMotorista = useCallback(async (id: string) => {
+    const { error } = await supabase.from('motoristas').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
+
+  const addServico = useCallback(async (s: Partial<Servico>) => {
+    const { error } = await supabase.from('servicos').insert({ nome: s.nome!, tipo: s.tipo || 'preventiva' });
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
+
+  const deleteServico = useCallback(async (id: string) => {
+    const { error } = await supabase.from('servicos').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
 
   return (
     <FleetContext.Provider value={{
-      veiculos, manutencoes, filiais, motoristas, servicos,
-      addVeiculo, updateVeiculo, deleteVeiculo,
+      veiculos, manutencoes, filiais, motoristas, servicos, loading, refresh,
+      addVeiculo, deleteVeiculo,
       addManutencao, finalizarManutencao,
-      addFilial, updateFilial, deleteFilial,
-      addMotorista, updateMotorista, deleteMotorista,
+      addFilial, deleteFilial,
+      addMotorista, deleteMotorista,
       addServico, deleteServico,
     }}>
       {children}

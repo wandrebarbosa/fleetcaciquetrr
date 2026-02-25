@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { useFleet } from '@/contexts/FleetContext';
+import { useFleet, Veiculo } from '@/contexts/FleetContext';
 import AppLayout from '@/components/AppLayout';
 import KpiCard from '@/components/KpiCard';
 import StatusBadge from '@/components/StatusBadge';
 import MaintenanceModal from '@/components/MaintenanceModal';
-import { Veiculo } from '@/types/fleet';
 import { Truck, AlertTriangle, CheckCircle, Clock, Gauge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,9 +25,9 @@ const Dashboard: React.FC = () => {
     const emManutencao = veiculos.filter(v => v.status === 'em_ocorrencia').length;
     const disponiveis = total - emManutencao;
     const disponibilidade = total > 0 ? Math.round((disponiveis / total) * 100) : 0;
-    const preventivaVencida = veiculos.filter(v => v.status !== 'em_ocorrencia' && v.kmAtual >= v.kmProximaPreventiva).length;
+    const preventivaVencida = veiculos.filter(v => v.status !== 'em_ocorrencia' && v.km_atual >= v.km_proxima_preventiva).length;
     const proximaPreventiva = veiculos.filter(v => {
-      const diff = v.kmProximaPreventiva - v.kmAtual;
+      const diff = v.km_proxima_preventiva - v.km_atual;
       return v.status !== 'em_ocorrencia' && diff > 0 && diff <= PREVENTIVA_THRESHOLD;
     }).length;
     return { total, emManutencao, disponibilidade, preventivaVencida, proximaPreventiva };
@@ -38,31 +37,31 @@ const Dashboard: React.FC = () => {
     return veiculos.filter(v => {
       if (searchPlaca && !v.placa.toLowerCase().includes(searchPlaca.toLowerCase())) return false;
       if (filterStatus !== 'todos' && v.status !== filterStatus) return false;
-      if (filterFilial !== 'todas' && v.filialId !== filterFilial) return false;
+      if (filterFilial !== 'todas' && v.filial_id !== filterFilial) return false;
       return true;
     });
   }, [veiculos, searchPlaca, filterStatus, filterFilial]);
 
-  const getFilialNome = (id: string) => filiais.find(f => f.id === id)?.nome ?? id;
+  const getFilialNome = (id: string | null) => filiais.find(f => f.id === id)?.nome ?? '—';
 
-  const getManutencaoAtiva = (id?: string) => {
+  const getManutencaoAtiva = (id?: string | null) => {
     if (!id) return null;
     return manutencoes.find(m => m.id === id);
   };
 
-  const getDiff = (v: Veiculo) => v.kmProximaPreventiva - v.kmAtual;
+  const getDiff = (v: Veiculo) => v.km_proxima_preventiva - v.km_atual;
   const isProxima = (v: Veiculo) => { const d = getDiff(v); return v.status !== 'em_ocorrencia' && d > 0 && d <= PREVENTIVA_THRESHOLD; };
-  const isVencida = (v: Veiculo) => v.status !== 'em_ocorrencia' && v.kmAtual >= v.kmProximaPreventiva;
+  const isVencida = (v: Veiculo) => v.status !== 'em_ocorrencia' && v.km_atual >= v.km_proxima_preventiva;
 
   const handleFinalizar = (veiculoId: string) => {
-    const man = manutencoes.find(m => m.veiculoId === veiculoId && m.status === 'aberta');
+    const man = manutencoes.find(m => m.veiculo_id === veiculoId && m.status === 'aberta');
     if (man) {
       finalizarManutencao(man.id);
       toast.success('Manutenção finalizada com sucesso');
     }
   };
 
-  const formatDate = (d?: string) => {
+  const formatDate = (d?: string | null) => {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
   };
@@ -75,7 +74,6 @@ const Dashboard: React.FC = () => {
           <p className="text-sm text-muted-foreground mt-1">Visão geral e controle de manutenções</p>
         </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard title="Total de Veículos" value={stats.total} icon={Truck} variant="primary" />
           <KpiCard title="Em Manutenção" value={stats.emManutencao} icon={Clock} variant="destructive" subtitle="Ocorrências abertas" />
@@ -84,14 +82,8 @@ const Dashboard: React.FC = () => {
           <KpiCard title="Próx. Preventiva" value={stats.proximaPreventiva} icon={Gauge} variant="warning" subtitle="< 5.000 km" />
         </div>
 
-        {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
-          <Input
-            placeholder="Buscar por placa..."
-            value={searchPlaca}
-            onChange={e => setSearchPlaca(e.target.value)}
-            className="w-48"
-          />
+          <Input placeholder="Buscar por placa..." value={searchPlaca} onChange={e => setSearchPlaca(e.target.value)} className="w-48" />
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
@@ -104,17 +96,12 @@ const Dashboard: React.FC = () => {
             <SelectTrigger className="w-52"><SelectValue placeholder="Filial" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as Filiais</SelectItem>
-              {filiais.map(f => (
-                <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
-              ))}
+              {filiais.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => { setSearchPlaca(''); setFilterStatus('todos'); setFilterFilial('todas'); }}>
-            Limpar Filtros
-          </Button>
+          <Button variant="outline" onClick={() => { setSearchPlaca(''); setFilterStatus('todos'); setFilterFilial('todas'); }}>Limpar Filtros</Button>
         </div>
 
-        {/* Fleet Table */}
         <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
@@ -135,48 +122,36 @@ const Dashboard: React.FC = () => {
             <TableBody>
               {filteredVeiculos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
-                    Nenhum veículo encontrado
-                  </TableCell>
+                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Nenhum veículo encontrado</TableCell>
                 </TableRow>
               ) : (
                 filteredVeiculos.map(v => {
-                  const man = getManutencaoAtiva(v.manutencaoAtivaId);
+                  const man = getManutencaoAtiva(v.manutencao_ativa_id);
                   const diff = getDiff(v);
                   return (
                     <TableRow key={v.id} className="hover:bg-muted/30">
                       <TableCell className="font-mono font-semibold">{v.placa}</TableCell>
                       <TableCell>{v.tipo}</TableCell>
-                      <TableCell className="text-sm">{getFilialNome(v.filialId)}</TableCell>
-                      <TableCell className="text-right font-mono">{v.kmAtual.toLocaleString('pt-BR')}</TableCell>
-                      <TableCell className="text-right font-mono">{v.kmProximaPreventiva.toLocaleString('pt-BR')}</TableCell>
+                      <TableCell className="text-sm">{getFilialNome(v.filial_id)}</TableCell>
+                      <TableCell className="text-right font-mono">{v.km_atual.toLocaleString('pt-BR')}</TableCell>
+                      <TableCell className="text-right font-mono">{v.km_proxima_preventiva.toLocaleString('pt-BR')}</TableCell>
                       <TableCell className={`text-right font-mono font-semibold ${diff <= 0 ? 'text-destructive' : diff <= PREVENTIVA_THRESHOLD ? 'text-warning' : ''}`}>
                         {diff.toLocaleString('pt-BR')} km
                       </TableCell>
                       <TableCell>
-                        <StatusBadge
-                          status={v.status}
-                          proximaPreventiva={isProxima(v)}
-                          preventivaVencida={isVencida(v)}
-                        />
+                        <StatusBadge status={v.status} proximaPreventiva={isProxima(v)} preventivaVencida={isVencida(v)} />
                       </TableCell>
                       <TableCell className="text-sm">
-                        {man ? (
-                          <span className="capitalize">{man.tipoManutencao}</span>
-                        ) : '—'}
+                        {man ? <span className="capitalize">{man.tipo_manutencao}</span> : '—'}
                       </TableCell>
-                      <TableCell className="text-sm">{formatDate(v.dataParada)}</TableCell>
-                      <TableCell className="text-sm">{formatDate(v.previsaoRetorno)}</TableCell>
+                      <TableCell className="text-sm">{formatDate(v.data_parada)}</TableCell>
+                      <TableCell className="text-sm">{formatDate(v.previsao_retorno)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           {v.status === 'disponivel' ? (
-                            <Button size="sm" onClick={() => setModalVeiculo(v)}>
-                              + Serviço
-                            </Button>
+                            <Button size="sm" onClick={() => setModalVeiculo(v)}>+ Serviço</Button>
                           ) : (
-                            <Button size="sm" variant="outline" onClick={() => handleFinalizar(v.id)}>
-                              Finalizar
-                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleFinalizar(v.id)}>Finalizar</Button>
                           )}
                         </div>
                       </TableCell>
@@ -189,11 +164,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <MaintenanceModal
-        veiculo={modalVeiculo}
-        open={!!modalVeiculo}
-        onClose={() => setModalVeiculo(null)}
-      />
+      <MaintenanceModal veiculo={modalVeiculo} open={!!modalVeiculo} onClose={() => setModalVeiculo(null)} />
     </AppLayout>
   );
 };

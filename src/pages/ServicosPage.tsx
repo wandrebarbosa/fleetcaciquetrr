@@ -16,10 +16,10 @@ const ServicosPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ nome: '', tipo: 'preventiva' as 'preventiva' | 'corretiva' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nome.trim()) { toast.error('Informe o nome do serviço'); return; }
-    addServico({ nome: form.nome.trim(), tipo: form.tipo });
+    await addServico({ nome: form.nome.trim(), tipo: form.tipo });
     toast.success('Serviço cadastrado');
     setShowModal(false);
     setForm({ nome: '', tipo: 'preventiva' });
@@ -50,12 +50,10 @@ const ServicosPage: React.FC = () => {
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.nome}</TableCell>
                   <TableCell>
-                    <Badge variant={s.tipo === 'preventiva' ? 'default' : 'destructive'} className="capitalize">
-                      {s.tipo}
-                    </Badge>
+                    <Badge variant={s.tipo === 'preventiva' ? 'default' : 'destructive'} className="capitalize">{s.tipo}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => { deleteServico(s.id); toast.success('Serviço removido'); }}>
+                    <Button variant="ghost" size="sm" onClick={async () => { await deleteServico(s.id); toast.success('Serviço removido'); }}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </TableCell>
