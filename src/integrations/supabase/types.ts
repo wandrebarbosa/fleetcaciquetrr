@@ -14,7 +14,226 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      filiais: {
+        Row: {
+          cidade: string
+          created_at: string
+          estado: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          cidade?: string
+          created_at?: string
+          estado?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          cidade?: string
+          created_at?: string
+          estado?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      frota_status_atual: {
+        Row: {
+          data_parada: string | null
+          filial_id: string | null
+          id: string
+          intervalo_preventiva: number
+          km_atual: number
+          km_proxima_preventiva: number
+          manutencao_ativa_id: string | null
+          motorista_id: string | null
+          placa: string
+          previsao_retorno: string | null
+          status: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          data_parada?: string | null
+          filial_id?: string | null
+          id?: string
+          intervalo_preventiva?: number
+          km_atual?: number
+          km_proxima_preventiva?: number
+          manutencao_ativa_id?: string | null
+          motorista_id?: string | null
+          placa: string
+          previsao_retorno?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          data_parada?: string | null
+          filial_id?: string | null
+          id?: string
+          intervalo_preventiva?: number
+          km_atual?: number
+          km_proxima_preventiva?: number
+          manutencao_ativa_id?: string | null
+          motorista_id?: string | null
+          placa?: string
+          previsao_retorno?: string | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "frota_status_atual_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "frota_status_atual_motorista_id_fkey"
+            columns: ["motorista_id"]
+            isOneToOne: false
+            referencedRelation: "motoristas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manutencoes: {
+        Row: {
+          created_at: string
+          data_fim: string | null
+          data_inicio: string
+          fornecedores: string
+          grupo_servicos: string[]
+          id: string
+          km_registrado: number
+          observacoes: string
+          solicitante: string
+          status: string
+          tempo_parado_horas: number | null
+          tipo_manutencao: string
+          veiculo_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          fornecedores?: string
+          grupo_servicos?: string[]
+          id?: string
+          km_registrado?: number
+          observacoes?: string
+          solicitante?: string
+          status?: string
+          tempo_parado_horas?: number | null
+          tipo_manutencao?: string
+          veiculo_id: string
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          fornecedores?: string
+          grupo_servicos?: string[]
+          id?: string
+          km_registrado?: number
+          observacoes?: string
+          solicitante?: string
+          status?: string
+          tempo_parado_horas?: number | null
+          tipo_manutencao?: string
+          veiculo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manutencoes_veiculo_id_fkey"
+            columns: ["veiculo_id"]
+            isOneToOne: false
+            referencedRelation: "frota_status_atual"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      motoristas: {
+        Row: {
+          cpf: string
+          created_at: string
+          filial_id: string | null
+          id: string
+          nome: string
+          telefone: string
+        }
+        Insert: {
+          cpf?: string
+          created_at?: string
+          filial_id?: string | null
+          id?: string
+          nome: string
+          telefone?: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          filial_id?: string | null
+          id?: string
+          nome?: string
+          telefone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "motoristas_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "filiais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id: string
+          nome?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      servicos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
