@@ -15,17 +15,17 @@ const MotoristasPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ nome: '', cpf: '', telefone: '', filialId: '' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nome.trim() || !form.filialId) { toast.error('Preencha os campos obrigatórios'); return; }
-    addMotorista({ nome: form.nome.trim(), cpf: form.cpf.trim(), telefone: form.telefone.trim(), filialId: form.filialId });
+    await addMotorista({ nome: form.nome.trim(), cpf: form.cpf.trim(), telefone: form.telefone.trim(), filial_id: form.filialId });
     toast.success('Motorista cadastrado');
     setShowModal(false);
     setForm({ nome: '', cpf: '', telefone: '', filialId: '' });
   };
 
   const getVeiculoPlaca = (motoristaId: string) => {
-    const v = veiculos.find(v => v.motoristaId === motoristaId);
+    const v = veiculos.find(v => v.motorista_id === motoristaId);
     return v?.placa ?? '—';
   };
 
@@ -58,10 +58,10 @@ const MotoristasPage: React.FC = () => {
                   <TableCell className="font-medium">{m.nome}</TableCell>
                   <TableCell className="font-mono text-sm">{m.cpf}</TableCell>
                   <TableCell>{m.telefone}</TableCell>
-                  <TableCell>{filiais.find(f => f.id === m.filialId)?.nome ?? '—'}</TableCell>
+                  <TableCell>{filiais.find(f => f.id === m.filial_id)?.nome ?? '—'}</TableCell>
                   <TableCell className="font-mono">{getVeiculoPlaca(m.id)}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => { deleteMotorista(m.id); toast.success('Motorista removido'); }}>
+                    <Button variant="ghost" size="sm" onClick={async () => { await deleteMotorista(m.id); toast.success('Motorista removido'); }}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </TableCell>

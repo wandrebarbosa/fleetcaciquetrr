@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Truck, Users, Building2, Wrench, Settings } from 'lucide-react';
+import { LayoutDashboard, Truck, Users, Building2, Wrench, LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -12,6 +14,11 @@ const links = [
 
 const AppSidebar: React.FC = () => {
   const location = useLocation();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success('Sessão encerrada');
+  };
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 sidebar-gradient flex flex-col z-50">
@@ -48,7 +55,13 @@ const AppSidebar: React.FC = () => {
       </nav>
 
       <div className="p-4 border-t border-sidebar-border">
-        <p className="text-xs text-sidebar-muted">v1.0 • Dados locais</p>
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 text-sm text-sidebar-muted hover:text-sidebar-foreground transition-colors w-full px-3 py-2"
+        >
+          <LogOut className="w-4 h-4" />
+          Sair
+        </button>
       </div>
     </aside>
   );

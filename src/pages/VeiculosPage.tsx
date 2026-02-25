@@ -18,26 +18,29 @@ const VeiculosPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.placa.trim() || !form.filialId) { toast.error('Preencha os campos obrigatórios'); return; }
     if (veiculos.some(v => v.placa === form.placa.trim().toUpperCase())) { toast.error('Placa já cadastrada'); return; }
     const km = Number(form.kmAtual) || 0;
     const intervalo = Number(form.intervaloPreventiva) || 30000;
-    addVeiculo({
+    await addVeiculo({
       placa: form.placa.trim().toUpperCase(),
       tipo: form.tipo,
-      filialId: form.filialId,
-      motoristaId: form.motoristaId || undefined,
-      kmAtual: km,
-      kmProximaPreventiva: Number(form.kmProximaPreventiva) || (km + intervalo),
-      intervaloPreventiva: intervalo,
+      filial_id: form.filialId,
+      motorista_id: form.motoristaId || null,
+      km_atual: km,
+      km_proxima_preventiva: Number(form.kmProximaPreventiva) || (km + intervalo),
+      intervalo_preventiva: intervalo,
       status: 'disponivel',
     });
     toast.success('Veículo cadastrado');
     setShowModal(false);
     setForm({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
   };
+
+  // Motoristas not yet linked to a vehicle
+  const availableMotoristas = motoristas.filter(m => !veiculos.some(v => v.motorista_id === m.id));
 
   return (
     <AppLayout>
@@ -69,13 +72,13 @@ const VeiculosPage: React.FC = () => {
                 <TableRow key={v.id}>
                   <TableCell className="font-mono font-semibold">{v.placa}</TableCell>
                   <TableCell>{v.tipo}</TableCell>
-                  <TableCell>{filiais.find(f => f.id === v.filialId)?.nome ?? '—'}</TableCell>
-                  <TableCell>{motoristas.find(m => m.id === v.motoristaId)?.nome ?? '—'}</TableCell>
-                  <TableCell className="text-right font-mono">{v.kmAtual.toLocaleString('pt-BR')}</TableCell>
-                  <TableCell className="text-right font-mono">{v.kmProximaPreventiva.toLocaleString('pt-BR')}</TableCell>
+                  <TableCell>{filiais.find(f => f.id === v.filial_id)?.nome ?? '—'}</TableCell>
+                  <TableCell>{motoristas.find(m => m.id === v.motorista_id)?.nome ?? '—'}</TableCell>
+                  <TableCell className="text-right font-mono">{v.km_atual.toLocaleString('pt-BR')}</TableCell>
+                  <TableCell className="text-right font-mono">{v.km_proxima_preventiva.toLocaleString('pt-BR')}</TableCell>
                   <TableCell><StatusBadge status={v.status} /></TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => { deleteVeiculo(v.id); toast.success('Veículo removido'); }}>
+                    <Button variant="ghost" size="sm" onClick={async () => { await deleteVeiculo(v.id); toast.success('Veículo removido'); }}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </TableCell>
@@ -109,7 +112,7 @@ const VeiculosPage: React.FC = () => {
               <div><Label>Motorista</Label>
                 <Select value={form.motoristaId} onValueChange={v => setForm(p => ({ ...p, motoristaId: v }))}>
                   <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                  <SelectContent>{motoristas.filter(m => !m.veiculoId).map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
+                  <SelectContent>{availableMotoristas.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>

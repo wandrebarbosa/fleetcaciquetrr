@@ -16,10 +16,10 @@ const FiliaisPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ nome: '', cidade: '', estado: 'SP' });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nome.trim()) { toast.error('Informe o nome da filial'); return; }
-    addFilial({ nome: form.nome.trim(), cidade: form.cidade.trim(), estado: form.estado });
+    await addFilial({ nome: form.nome.trim(), cidade: form.cidade.trim(), estado: form.estado });
     toast.success('Filial cadastrada');
     setShowModal(false);
     setForm({ nome: '', cidade: '', estado: 'SP' });
@@ -53,9 +53,9 @@ const FiliaisPage: React.FC = () => {
                   <TableCell className="font-medium">{f.nome}</TableCell>
                   <TableCell>{f.cidade}</TableCell>
                   <TableCell>{f.estado}</TableCell>
-                  <TableCell className="text-right">{veiculos.filter(v => v.filialId === f.id).length}</TableCell>
+                  <TableCell className="text-right">{veiculos.filter(v => v.filial_id === f.id).length}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => { deleteFilial(f.id); toast.success('Filial removida'); }}>
+                    <Button variant="ghost" size="sm" onClick={async () => { await deleteFilial(f.id); toast.success('Filial removida'); }}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </TableCell>
