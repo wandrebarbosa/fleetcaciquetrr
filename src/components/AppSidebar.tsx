@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Truck, Users, Building2, Wrench, LogOut } from 'lucide-react';
+import { LayoutDashboard, Truck, Users, Building2, Wrench, History, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -10,6 +10,7 @@ const links = [
   { to: '/motoristas', label: 'Motoristas', icon: Users },
   { to: '/filiais', label: 'Filiais', icon: Building2 },
   { to: '/servicos', label: 'Serviços', icon: Wrench },
+  { to: '/historico', label: 'Histórico', icon: History },
 ];
 
 const AppSidebar: React.FC = () => {
