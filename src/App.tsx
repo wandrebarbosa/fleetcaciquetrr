@@ -12,6 +12,7 @@ import VeiculosPage from "./pages/VeiculosPage";
 import MotoristasPage from "./pages/MotoristasPage";
 import FiliaisPage from "./pages/FiliaisPage";
 import ServicosPage from "./pages/ServicosPage";
+import HistoricoPage from "./pages/HistoricoPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 
@@ -51,6 +52,7 @@ const App = () => {
                 <Route path="/motoristas" element={<MotoristasPage />} />
                 <Route path="/filiais" element={<FiliaisPage />} />
                 <Route path="/servicos" element={<ServicosPage />} />
+                <Route path="/historico" element={<HistoricoPage />} />
                 <Route path="/auth" element={<Navigate to="/" replace />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
