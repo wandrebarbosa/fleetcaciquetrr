@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatPlaca } from '@/lib/formatPlaca';
 
 const MotoristasPage: React.FC = () => {
   const { motoristas, filiais, veiculos, addMotorista, deleteMotorista } = useFleet();
@@ -26,7 +27,7 @@ const MotoristasPage: React.FC = () => {
 
   const getVeiculoPlaca = (motoristaId: string) => {
     const v = veiculos.find(v => v.motorista_id === motoristaId);
-    return v?.placa ?? '—';
+    return v?.placa ? formatPlaca(v.placa) : '—';
   };
 
   return (
