@@ -12,6 +12,7 @@ import { CalendarIcon, History, Filter, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { formatPlaca } from '@/lib/formatPlaca';
 
 const HistoricoPage: React.FC = () => {
   const { manutencoes, veiculos } = useFleet();
@@ -41,7 +42,10 @@ const HistoricoPage: React.FC = () => {
     });
   }, [manutencoes, filterVeiculo, filterTipo, filterStatus, dateFrom, dateTo]);
 
-  const getPlaca = (veiculoId: string) => veiculos.find(v => v.id === veiculoId)?.placa ?? '—';
+  const getPlaca = (veiculoId: string) => {
+    const placa = veiculos.find(v => v.id === veiculoId)?.placa;
+    return placa ? formatPlaca(placa) : '—';
+  };
 
   const clearFilters = () => {
     setFilterVeiculo('todos');
@@ -84,7 +88,7 @@ const HistoricoPage: React.FC = () => {
             <SelectContent>
               <SelectItem value="todos">Todos os Veículos</SelectItem>
               {veiculos.map(v => (
-                <SelectItem key={v.id} value={v.id}>{v.placa} — {v.tipo}</SelectItem>
+                <SelectItem key={v.id} value={v.id}>{formatPlaca(v.placa)} — {v.tipo}</SelectItem>
               ))}
             </SelectContent>
           </Select>

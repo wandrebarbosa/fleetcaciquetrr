@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFleet, Veiculo } from '@/contexts/FleetContext';
+import { formatPlaca } from '@/lib/formatPlaca';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,7 +65,7 @@ const MaintenanceModal: React.FC<MaintenanceModalProps> = ({ veiculo, open, onCl
       previsao_retorno: previsaoRetorno || undefined,
     });
 
-    toast.success(`Manutenção registrada para ${veiculo.placa}`);
+    toast.success(`Manutenção registrada para ${formatPlaca(veiculo.placa)}`);
     onClose();
   };
 
@@ -75,7 +76,7 @@ const MaintenanceModal: React.FC<MaintenanceModalProps> = ({ veiculo, open, onCl
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Registrar Manutenção — <span className="text-accent font-mono">{veiculo.placa}</span>
+            Registrar Manutenção — <span className="text-accent font-mono">{formatPlaca(veiculo.placa)}</span>
           </DialogTitle>
         </DialogHeader>
 

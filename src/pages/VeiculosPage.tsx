@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Trash2 } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 import { toast } from 'sonner';
+import { formatPlaca } from '@/lib/formatPlaca';
 
 const tiposVeiculo = ['Carreta', 'Bitruck', 'Toco', '3/4', 'VUC', 'Cavalo Mecânico'];
 
@@ -70,7 +71,7 @@ const VeiculosPage: React.FC = () => {
             <TableBody>
               {veiculos.map(v => (
                 <TableRow key={v.id}>
-                  <TableCell className="font-mono font-semibold">{v.placa}</TableCell>
+                  <TableCell className="font-mono font-semibold">{formatPlaca(v.placa)}</TableCell>
                   <TableCell>{v.tipo}</TableCell>
                   <TableCell>{filiais.find(f => f.id === v.filial_id)?.nome ?? '—'}</TableCell>
                   <TableCell>{motoristas.find(m => m.id === v.motorista_id)?.nome ?? '—'}</TableCell>
@@ -94,7 +95,7 @@ const VeiculosPage: React.FC = () => {
           <DialogHeader><DialogTitle>Novo Veículo</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Placa *</Label><Input value={form.placa} onChange={e => setForm(p => ({ ...p, placa: e.target.value }))} placeholder="ABC-1D23" required /></div>
+              <div><Label>Placa *</Label><Input value={form.placa} onChange={e => setForm(p => ({ ...p, placa: e.target.value }))} placeholder="ABC1D23" required /></div>
               <div><Label>Tipo</Label>
                 <Select value={form.tipo} onValueChange={v => setForm(p => ({ ...p, tipo: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>

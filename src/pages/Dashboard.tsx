@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useFleet, Veiculo } from '@/contexts/FleetContext';
+import { formatPlaca } from '@/lib/formatPlaca';
 import AppLayout from '@/components/AppLayout';
 import KpiCard from '@/components/KpiCard';
 import StatusBadge from '@/components/StatusBadge';
@@ -130,7 +131,7 @@ const Dashboard: React.FC = () => {
                   const diff = getDiff(v);
                   return (
                     <TableRow key={v.id} className="hover:bg-muted/30">
-                      <TableCell className="font-mono font-semibold">{v.placa}</TableCell>
+                      <TableCell className="font-mono font-semibold">{formatPlaca(v.placa)}</TableCell>
                       <TableCell>{v.tipo}</TableCell>
                       <TableCell className="text-sm">{getFilialNome(v.filial_id)}</TableCell>
                       <TableCell className="text-right font-mono">{v.km_atual.toLocaleString('pt-BR')}</TableCell>
