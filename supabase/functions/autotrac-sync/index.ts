@@ -17,18 +17,21 @@ async function autotracFetch(path: string) {
     throw new Error("Autotrac credentials not configured");
   }
 
-  const authToken = btoa(`${login}:${password}`);
+  // Autotrac uses NON-standard Basic auth: plain text, not base64 encoded
+  console.log(`Autotrac fetch: ${AUTOTRAC_BASE}${path}`);
 
   const res = await fetch(`${AUTOTRAC_BASE}${path}`, {
     headers: {
-      Authorization: `Basic ${authToken}`,
+      Authorization: `Basic ${login}:${password}`,
       "Ocp-Apim-Subscription-Key": subscriptionKey,
       "Content-Type": "application/json",
+      Accept: "application/json",
     },
   });
 
   if (!res.ok) {
     const body = await res.text();
+    console.error(`Autotrac API error [${res.status}]: headers=${JSON.stringify(Object.fromEntries(res.headers))}, body=${body}`);
     throw new Error(`Autotrac API [${res.status}]: ${body}`);
   }
 
