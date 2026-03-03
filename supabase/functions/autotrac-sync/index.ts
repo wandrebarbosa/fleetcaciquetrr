@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
       const vehiclesData = await autotracFetch(
         `/v1/accounts/${accountCode}/authorizedvehicles?_limit=500`
       );
-      const vehicles = Array.isArray(vehiclesData) ? vehiclesData : [];
+      const vehicles = Array.isArray(vehiclesData) ? vehiclesData : (vehiclesData?.Data || []);
 
       const results: Array<{
         vehicleName: string;
@@ -119,10 +119,12 @@ Deno.serve(async (req) => {
           );
           const events = telemetry?.Data || [];
           const latest = events[0];
+          // Use HodometerEnd if available, fallback to HodometerStart
+          const hodometer = latest?.HodometerEnd ?? latest?.HodometerStart ?? null;
           results.push({
             vehicleName: v.VehicleName || "",
             vehicleCode: v.VehicleCode,
-            hodometerEnd: latest?.HodometerEnd ?? null,
+            hodometerEnd: hodometer,
           });
         } catch (e) {
           results.push({
