@@ -134,9 +134,10 @@ const ImportarKmPage: React.FC = () => {
       // Use first account (most common scenario)
       const accountCode = accounts[0].Code;
 
-      // Step 2: Sync all vehicles
+      // Step 2: Sync all vehicles (send fleet placas to filter on server)
+      const fleetPlacas = veiculos.map(v => v.placa);
       const { data: syncData, error: syncErr } = await supabase.functions.invoke('autotrac-sync', {
-        body: { action: 'sync-all', accountCode },
+        body: { action: 'sync-all', accountCode, fleetPlacas },
       });
 
       if (syncErr) throw new Error(syncErr.message);

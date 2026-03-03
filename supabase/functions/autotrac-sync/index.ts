@@ -17,7 +17,6 @@ async function autotracFetch(path: string) {
     throw new Error("Autotrac credentials not configured");
   }
 
-  // Autotrac uses NON-standard Basic auth: plain text, not base64 encoded
   console.log(`Autotrac fetch: ${AUTOTRAC_BASE}${path}`);
 
   const res = await fetch(`${AUTOTRAC_BASE}${path}`, {
@@ -31,7 +30,7 @@ async function autotracFetch(path: string) {
 
   if (!res.ok) {
     const body = await res.text();
-    console.error(`Autotrac API error [${res.status}]: headers=${JSON.stringify(Object.fromEntries(res.headers))}, body=${body}`);
+    console.error(`Autotrac API error [${res.status}]: body=${body}`);
     throw new Error(`Autotrac API [${res.status}]: ${body}`);
   }
 
@@ -43,7 +42,6 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Validate auth
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -68,80 +66,64 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { action, accountCode, vehicleCode } = await req.json();
+    const { action, accountCode, fleetPlacas } = await req.json();
 
     if (action === "accounts") {
-      // Get all active accounts
       const data = await autotracFetch("/v1/accounts");
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (action === "vehicles" && accountCode) {
-      // Get authorized vehicles for account
-      const data = await autotracFetch(
-        `/v1/accounts/${accountCode}/authorizedvehicles?_limit=500`
-      );
-      return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "telemetry" && accountCode && vehicleCode) {
-      // Get latest telemetry (last 24h, event 1 = temporizado for odometer readings)
-      const data = await autotracFetch(
-        `/v1/accounts/${accountCode}/vehicles/${vehicleCode}/telemetryevents?_eventNumber=1&_limit=1`
-      );
-      return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     if (action === "sync-all" && accountCode) {
-      // Fetch all authorized vehicles, get latest telemetry for each, return summary
+      // Get all authorized vehicles
       const vehiclesData = await autotracFetch(
         `/v1/accounts/${accountCode}/authorizedvehicles?_limit=500`
       );
       const vehicles = Array.isArray(vehiclesData) ? vehiclesData : (vehiclesData?.Data || []);
 
-      // Process vehicles in parallel batches of 10
-      const BATCH_SIZE = 10;
-      const results: Array<{
-        vehicleName: string;
-        vehicleCode: number;
-        hodometerEnd: number | null;
-        error?: string;
-      }> = [];
+      // Build a set of fleet placas for fast lookup
+      const placaSet = new Set<string>(
+        (fleetPlacas || []).map((p: string) => p.replace(/[-\s]/g, "").toUpperCase())
+      );
 
-      for (let i = 0; i < vehicles.length; i += BATCH_SIZE) {
-        const batch = vehicles.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(
-          batch.map(async (v: any) => {
-            try {
-              const telemetry = await autotracFetch(
-                `/v1/accounts/${accountCode}/vehicles/${v.VehicleCode}/telemetryevents?_eventNumber=1&_limit=1`
-              );
-              const events = telemetry?.Data || [];
-              const latest = events[0];
-              const hodometer = latest?.HodometerEnd ?? latest?.HodometerStart ?? null;
-              return {
-                vehicleName: v.VehicleName || "",
-                vehicleCode: v.VehicleCode,
-                hodometerEnd: hodometer,
-              };
-            } catch (e) {
-              return {
-                vehicleName: v.VehicleName || "",
-                vehicleCode: v.VehicleCode,
-                hodometerEnd: null,
-                error: e instanceof Error ? e.message : "Unknown error",
-              };
-            }
+      console.log(`Total Autotrac vehicles: ${vehicles.length}, fleet placas: ${placaSet.size}`);
+
+      // Filter: only fetch telemetry for vehicles whose name contains a fleet placa
+      const matchedVehicles = placaSet.size > 0
+        ? vehicles.filter((v: any) => {
+            const name = (v.VehicleName || "").toUpperCase().replace(/[-\s]/g, "");
+            return Array.from(placaSet).some((placa) => name.includes(placa));
           })
-        );
-        results.push(...batchResults);
-      }
+        : vehicles;
+
+      console.log(`Matched vehicles to fetch telemetry: ${matchedVehicles.length}`);
+
+      // Fetch telemetry in parallel for matched vehicles only
+      const results = await Promise.all(
+        matchedVehicles.map(async (v: any) => {
+          try {
+            const telemetry = await autotracFetch(
+              `/v1/accounts/${accountCode}/vehicles/${v.VehicleCode}/telemetryevents?_eventNumber=1&_limit=1`
+            );
+            const events = telemetry?.Data || [];
+            const latest = events[0];
+            const hodometer = latest?.HodometerEnd ?? latest?.HodometerStart ?? null;
+            return {
+              vehicleName: v.VehicleName || "",
+              vehicleCode: v.VehicleCode,
+              hodometerEnd: hodometer,
+            };
+          } catch (e) {
+            return {
+              vehicleName: v.VehicleName || "",
+              vehicleCode: v.VehicleCode,
+              hodometerEnd: null,
+              error: e instanceof Error ? e.message : "Unknown error",
+            };
+          }
+        })
+      );
 
       return new Response(JSON.stringify(results), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -149,7 +131,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: "Invalid action. Use: accounts, vehicles, telemetry, sync-all" }),
+      JSON.stringify({ error: "Invalid action. Use: accounts, sync-all" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
