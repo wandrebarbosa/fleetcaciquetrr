@@ -213,6 +213,24 @@ const ImportarKmPage: React.FC = () => {
     toast.success(`${successCount} veículo(s) atualizado(s) via Autotrac`);
   };
 
+  const handleExportJson = () => {
+    const exportData = autotracRows.map(row => ({
+      placa: row.placa,
+      veiculo_autotrac: row.vehicleName,
+      km_telemetria: row.hodometerEnd,
+      status: row.status,
+      observacao: row.message || null,
+    }));
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `autotrac-sync-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('JSON exportado com sucesso');
+  };
+
   const pendingCount = rows.filter(r => r.status === 'pending').length;
   const errorCount = rows.filter(r => r.status === 'error').length;
   const successCount = rows.filter(r => r.status === 'success').length;
@@ -316,6 +334,11 @@ const ImportarKmPage: React.FC = () => {
                   <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                   {syncing ? 'Buscando dados...' : 'Sincronizar com Autotrac'}
                 </Button>
+                {autotracRows.length > 0 && (
+                  <Button variant="outline" onClick={handleExportJson}>
+                    <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar JSON
+                  </Button>
+                )}
                 {autotracRows.length > 0 && (
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span>{autotracRows.length} veículos</span>
