@@ -74,6 +74,8 @@ interface FleetContextType {
   deleteMotorista: (id: string) => Promise<void>;
   addServico: (s: Partial<Servico>) => Promise<void>;
   deleteServico: (id: string) => Promise<void>;
+  updateVeiculo: (id: string, data: Partial<Veiculo>) => Promise<void>;
+  updateMotorista: (id: string, data: Partial<Motorista>) => Promise<void>;
 }
 
 const FleetContext = createContext<FleetContextType | null>(null);
@@ -220,13 +222,33 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await refresh();
   }, [refresh]);
 
+  const updateVeiculo = useCallback(async (id: string, data: Partial<Veiculo>) => {
+    const updateData: Record<string, unknown> = {};
+    if (data.tipo !== undefined) updateData.tipo = data.tipo;
+    if (data.filial_id !== undefined) updateData.filial_id = data.filial_id;
+    if (data.motorista_id !== undefined) updateData.motorista_id = data.motorista_id || null;
+    updateData.updated_at = new Date().toISOString();
+    const { error } = await supabase.from('frota_status_atual').update(updateData).eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
+
+  const updateMotorista = useCallback(async (id: string, data: Partial<Motorista>) => {
+    const updateData: Record<string, unknown> = {};
+    if (data.telefone !== undefined) updateData.telefone = data.telefone;
+    if (data.filial_id !== undefined) updateData.filial_id = data.filial_id || null;
+    const { error } = await supabase.from('motoristas').update(updateData).eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
+
   return (
     <FleetContext.Provider value={{
       veiculos, manutencoes, filiais, motoristas, servicos, loading, refresh,
-      addVeiculo, deleteVeiculo,
+      addVeiculo, deleteVeiculo, updateVeiculo,
       addManutencao, finalizarManutencao,
       addFilial, deleteFilial,
-      addMotorista, deleteMotorista,
+      addMotorista, deleteMotorista, updateMotorista,
       addServico, deleteServico,
     }}>
       {children}

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 import { toast } from 'sonner';
 import { formatPlaca } from '@/lib/formatPlaca';
@@ -15,9 +15,13 @@ import { formatPlaca } from '@/lib/formatPlaca';
 const tiposVeiculo = ['Carreta', 'Bitruck', 'Toco', '3/4', 'VUC', 'Cavalo Mecânico'];
 
 const VeiculosPage: React.FC = () => {
-  const { veiculos, filiais, motoristas, addVeiculo, deleteVeiculo } = useFleet();
+  const { veiculos, filiais, motoristas, addVeiculo, deleteVeiculo, updateVeiculo } = useFleet();
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
+
+  // Edit state
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ tipo: '', filialId: '', motoristaId: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +44,43 @@ const VeiculosPage: React.FC = () => {
     setForm({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
   };
 
-  // Motoristas not yet linked to a vehicle
+  const openEdit = (v: typeof veiculos[0]) => {
+    setEditId(v.id);
+    setEditForm({ tipo: v.tipo, filialId: v.filial_id || '', motoristaId: v.motorista_id || '' });
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editId || !editForm.filialId) { toast.error('Preencha os campos obrigatórios'); return; }
+
+    // If motorista changed, clear old vehicle's motorista_id
+    const oldVeiculo = veiculos.find(v => v.id === editId);
+    if (oldVeiculo?.motorista_id && oldVeiculo.motorista_id !== editForm.motoristaId) {
+      // old motorista is freed automatically since we're updating this vehicle
+    }
+    // If new motorista is already on another vehicle, clear that
+    if (editForm.motoristaId) {
+      const otherVeiculo = veiculos.find(v => v.motorista_id === editForm.motoristaId && v.id !== editId);
+      if (otherVeiculo) {
+        await updateVeiculo(otherVeiculo.id, { motorista_id: null } as any);
+      }
+    }
+
+    await updateVeiculo(editId, {
+      tipo: editForm.tipo,
+      filial_id: editForm.filialId,
+      motorista_id: editForm.motoristaId || null,
+    } as any);
+    toast.success('Veículo atualizado');
+    setEditId(null);
+  };
+
+  // Motoristas available for the edit form (current + unlinked)
+  const availableMotoristasForEdit = motoristas.filter(m =>
+    m.id === editForm.motoristaId || !veiculos.some(v => v.motorista_id === m.id && v.id !== editId)
+  );
+
+  // Motoristas not yet linked to a vehicle (for new vehicle)
   const availableMotoristas = motoristas.filter(m => !veiculos.some(v => v.motorista_id === m.id));
 
   return (
@@ -79,9 +119,14 @@ const VeiculosPage: React.FC = () => {
                   <TableCell className="text-right font-mono">{v.km_proxima_preventiva.toLocaleString('pt-BR')}</TableCell>
                   <TableCell><StatusBadge status={v.status} /></TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={async () => { await deleteVeiculo(v.id); toast.success('Veículo removido'); }}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(v)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={async () => { await deleteVeiculo(v.id); toast.success('Veículo removido'); }}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -90,6 +135,7 @@ const VeiculosPage: React.FC = () => {
         </div>
       </div>
 
+      {/* New Vehicle Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Veículo</DialogTitle></DialogHeader>
@@ -125,6 +171,40 @@ const VeiculosPage: React.FC = () => {
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
               <Button type="submit">Cadastrar</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Vehicle Modal */}
+      <Dialog open={!!editId} onOpenChange={(open) => { if (!open) setEditId(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar Veículo</DialogTitle></DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div><Label>Tipo</Label>
+              <Select value={editForm.tipo} onValueChange={v => setEditForm(p => ({ ...p, tipo: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{tiposVeiculo.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Filial *</Label>
+              <Select value={editForm.filialId} onValueChange={v => setEditForm(p => ({ ...p, filialId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{filiais.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Motorista</Label>
+              <Select value={editForm.motoristaId} onValueChange={v => setEditForm(p => ({ ...p, motoristaId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Sem motorista" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem motorista</SelectItem>
+                  {availableMotoristasForEdit.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setEditId(null)}>Cancelar</Button>
+              <Button type="submit">Salvar</Button>
             </div>
           </form>
         </DialogContent>
