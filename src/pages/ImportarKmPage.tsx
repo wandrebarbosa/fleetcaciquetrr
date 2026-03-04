@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Upload, FileSpreadsheet, Check, AlertTriangle, X, RefreshCw, Satellite } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertTriangle, X, RefreshCw, Satellite, ExternalLink } from 'lucide-react';
 import { useFleet } from '@/contexts/FleetContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -339,6 +339,16 @@ const ImportarKmPage: React.FC = () => {
                     <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar JSON
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fleet-api`;
+                    window.open(url, '_blank');
+                    toast.info('Lembre-se de adicionar ?apikey=SUA_CHAVE na URL');
+                  }}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" /> API Endpoint
+                </Button>
                 {autotracRows.length > 0 && (
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span>{autotracRows.length} veículos</span>
