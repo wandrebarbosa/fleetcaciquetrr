@@ -8,12 +8,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
 const estados = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
 const FiliaisPage: React.FC = () => {
   const { filiais, veiculos, addFilial, deleteFilial } = useFleet();
   const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ nome: '', cidade: '', estado: 'SP' });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,7 +57,7 @@ const FiliaisPage: React.FC = () => {
                   <TableCell>{f.estado}</TableCell>
                   <TableCell className="text-right">{veiculos.filter(v => v.filial_id === f.id).length}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={async () => { await deleteFilial(f.id); toast.success('Filial removida'); }}>
+                    <Button variant="ghost" size="sm" onClick={() => setDeleteId(f.id)}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </TableCell>
@@ -86,6 +88,13 @@ const FiliaisPage: React.FC = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={async () => { if (deleteId) { await deleteFilial(deleteId); toast.success('Filial removida'); setDeleteId(null); } }}
+        description="Tem certeza que deseja excluir esta filial? Esta ação não pode ser desfeita."
+      />
     </AppLayout>
   );
 };

@@ -11,12 +11,14 @@ import { Plus, Trash2, Pencil } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 import { toast } from 'sonner';
 import { formatPlaca } from '@/lib/formatPlaca';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
 const tiposVeiculo = ['Carreta', 'Bitruck', 'Toco', '3/4', 'VUC', 'Cavalo Mecânico'];
 
 const VeiculosPage: React.FC = () => {
   const { veiculos, filiais, motoristas, addVeiculo, deleteVeiculo, updateVeiculo } = useFleet();
   const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
 
   // Edit state
@@ -123,7 +125,7 @@ const VeiculosPage: React.FC = () => {
                       <Button variant="ghost" size="sm" onClick={() => openEdit(v)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={async () => { await deleteVeiculo(v.id); toast.success('Veículo removido'); }}>
+                      <Button variant="ghost" size="sm" onClick={() => setDeleteId(v.id)}>
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
@@ -209,6 +211,13 @@ const VeiculosPage: React.FC = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={async () => { if (deleteId) { await deleteVeiculo(deleteId); toast.success('Veículo removido'); setDeleteId(null); } }}
+        description="Tem certeza que deseja excluir este veículo? Esta ação não pode ser desfeita."
+      />
     </AppLayout>
   );
 };
