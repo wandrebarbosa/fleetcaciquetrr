@@ -10,10 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
 const ServicosPage: React.FC = () => {
   const { servicos, addServico, deleteServico } = useFleet();
   const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ nome: '', tipo: 'preventiva' as 'preventiva' | 'corretiva' });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,7 +55,7 @@ const ServicosPage: React.FC = () => {
                     <Badge variant={s.tipo === 'preventiva' ? 'default' : 'destructive'} className="capitalize">{s.tipo}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={async () => { await deleteServico(s.id); toast.success('Serviço removido'); }}>
+                    <Button variant="ghost" size="sm" onClick={() => setDeleteId(s.id)}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </TableCell>
@@ -85,6 +87,13 @@ const ServicosPage: React.FC = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={async () => { if (deleteId) { await deleteServico(deleteId); toast.success('Serviço removido'); setDeleteId(null); } }}
+        description="Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita."
+      />
     </AppLayout>
   );
 };

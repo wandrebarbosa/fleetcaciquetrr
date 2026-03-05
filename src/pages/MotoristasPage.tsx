@@ -10,10 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatPlaca } from '@/lib/formatPlaca';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
 const MotoristasPage: React.FC = () => {
   const { motoristas, filiais, veiculos, addMotorista, deleteMotorista, updateMotorista, updateVeiculo } = useFleet();
   const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ nome: '', cpf: '', telefone: '', filialId: '' });
 
   // Edit state
@@ -114,7 +116,7 @@ const MotoristasPage: React.FC = () => {
                       <Button variant="ghost" size="sm" onClick={() => openEdit(m)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={async () => { await deleteMotorista(m.id); toast.success('Motorista removido'); }}>
+                      <Button variant="ghost" size="sm" onClick={() => setDeleteId(m.id)}>
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
@@ -180,6 +182,13 @@ const MotoristasPage: React.FC = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={async () => { if (deleteId) { await deleteMotorista(deleteId); toast.success('Motorista removido'); setDeleteId(null); } }}
+        description="Tem certeza que deseja excluir este motorista? Esta ação não pode ser desfeita."
+      />
     </AppLayout>
   );
 };
