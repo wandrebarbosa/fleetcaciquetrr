@@ -13,13 +13,15 @@ import { toast } from 'sonner';
 import { formatPlaca } from '@/lib/formatPlaca';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
-const tiposVeiculo = ['Carreta', 'Bitruck', 'Toco', '3/4', 'VUC', 'Cavalo Mecânico'];
+const tiposVeiculo = ['Carreta', 'Bitruck', 'Bitrem', 'Rodotrem', 'Toco', '3/4', 'VUC', 'Cavalo Mecânico'];
 
 const VeiculosPage: React.FC = () => {
   const { veiculos, filiais, motoristas, addVeiculo, deleteVeiculo, updateVeiculo } = useFleet();
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Edit state
   const [editId, setEditId] = useState<string | null>(null);
@@ -85,6 +87,15 @@ const VeiculosPage: React.FC = () => {
   // Motoristas not yet linked to a vehicle (for new vehicle)
   const availableMotoristas = motoristas.filter(m => !veiculos.some(v => v.motorista_id === m.id));
 
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(veiculos.length / pageSize));
+  const paginatedVeiculos = veiculos.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Reset page if out of bounds
+  React.useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1);
+  }, [veiculos.length, pageSize, currentPage, totalPages]);
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -111,7 +122,7 @@ const VeiculosPage: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {veiculos.map(v => (
+              {paginatedVeiculos.map(v => (
                 <TableRow key={v.id}>
                   <TableCell className="font-mono font-semibold">{formatPlaca(v.placa)}</TableCell>
                   <TableCell>{v.tipo}</TableCell>
@@ -134,6 +145,40 @@ const VeiculosPage: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Exibir</span>
+            <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setCurrentPage(1); }}>
+              <SelectTrigger className="w-20 h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span>de {veiculos.length} veículos</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Anterior</Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+              .reduce<(number | 'ellipsis')[]>((acc, p, i, arr) => {
+                if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('ellipsis');
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, i) =>
+                p === 'ellipsis' ? (
+                  <span key={`e${i}`} className="px-2 text-muted-foreground">…</span>
+                ) : (
+                  <Button key={p} variant={p === currentPage ? 'default' : 'outline'} size="sm" className="w-8 h-8 p-0" onClick={() => setCurrentPage(p as number)}>{p}</Button>
+                )
+              )}
+            <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Próximo</Button>
+          </div>
         </div>
       </div>
 
