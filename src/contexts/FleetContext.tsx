@@ -227,6 +227,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (data.tipo !== undefined) updateData.tipo = data.tipo;
     if (data.filial_id !== undefined) updateData.filial_id = data.filial_id;
     if (data.motorista_id !== undefined) updateData.motorista_id = data.motorista_id || null;
+    if (data.km_proxima_preventiva !== undefined) updateData.km_proxima_preventiva = data.km_proxima_preventiva;
     updateData.updated_at = new Date().toISOString();
     const { error } = await supabase.from('frota_status_atual').update(updateData).eq('id', id);
     if (error) { toast.error(error.message); return; }
