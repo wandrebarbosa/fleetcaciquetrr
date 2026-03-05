@@ -25,7 +25,7 @@ const VeiculosPage: React.FC = () => {
 
   // Edit state
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ tipo: '', filialId: '', motoristaId: '' });
+  const [editForm, setEditForm] = useState({ tipo: '', filialId: '', motoristaId: '', kmProximaPreventiva: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +50,7 @@ const VeiculosPage: React.FC = () => {
 
   const openEdit = (v: typeof veiculos[0]) => {
     setEditId(v.id);
-    setEditForm({ tipo: v.tipo, filialId: v.filial_id || '', motoristaId: v.motorista_id || '' });
+    setEditForm({ tipo: v.tipo, filialId: v.filial_id || '', motoristaId: v.motorista_id || '', kmProximaPreventiva: String(v.km_proxima_preventiva) });
   };
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -74,6 +74,7 @@ const VeiculosPage: React.FC = () => {
       tipo: editForm.tipo,
       filial_id: editForm.filialId,
       motorista_id: editForm.motoristaId || null,
+      km_proxima_preventiva: Number(editForm.kmProximaPreventiva) || 0,
     } as any);
     toast.success('Veículo atualizado');
     setEditId(null);
@@ -248,6 +249,9 @@ const VeiculosPage: React.FC = () => {
                   {availableMotoristasForEdit.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div><Label>Próx. Preventiva (km)</Label>
+              <Input type="number" value={editForm.kmProximaPreventiva} onChange={e => setEditForm(p => ({ ...p, kmProximaPreventiva: e.target.value }))} />
             </div>
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setEditId(null)}>Cancelar</Button>
