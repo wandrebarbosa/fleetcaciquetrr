@@ -1,0 +1,1 @@
+ALTER TABLE public.frota_status_atual ADD COLUMN km_ultima_preventiva integer NOT NULL DEFAULT 0;
