@@ -46,6 +46,7 @@ export type Database = {
           intervalo_preventiva: number
           km_atual: number
           km_proxima_preventiva: number
+          km_ultima_preventiva: number
           manutencao_ativa_id: string | null
           motorista_id: string | null
           placa: string
@@ -61,6 +62,7 @@ export type Database = {
           intervalo_preventiva?: number
           km_atual?: number
           km_proxima_preventiva?: number
+          km_ultima_preventiva?: number
           manutencao_ativa_id?: string | null
           motorista_id?: string | null
           placa: string
@@ -76,6 +78,7 @@ export type Database = {
           intervalo_preventiva?: number
           km_atual?: number
           km_proxima_preventiva?: number
+          km_ultima_preventiva?: number
           manutencao_ativa_id?: string | null
           motorista_id?: string | null
           placa?: string

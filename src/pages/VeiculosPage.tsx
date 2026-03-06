@@ -25,7 +25,7 @@ const VeiculosPage: React.FC = () => {
 
   // Edit state
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ tipo: '', filialId: '', motoristaId: '', kmProximaPreventiva: '' });
+  const [editForm, setEditForm] = useState({ tipo: '', filialId: '', motoristaId: '', kmUltimaPreventiva: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,16 +33,18 @@ const VeiculosPage: React.FC = () => {
     if (veiculos.some(v => v.placa === form.placa.trim().toUpperCase())) { toast.error('Placa já cadastrada'); return; }
     const km = Number(form.kmAtual) || 0;
     const intervalo = Number(form.intervaloPreventiva) || 30000;
+    const kmUltimaPreventiva = Number(form.kmProximaPreventiva) || 0; // field reused as "última preventiva"
     await addVeiculo({
       placa: form.placa.trim().toUpperCase(),
       tipo: form.tipo,
       filial_id: form.filialId,
       motorista_id: form.motoristaId || null,
       km_atual: km,
-      km_proxima_preventiva: Number(form.kmProximaPreventiva) || (km + intervalo),
+      km_ultima_preventiva: kmUltimaPreventiva,
+      km_proxima_preventiva: kmUltimaPreventiva > 0 ? kmUltimaPreventiva + intervalo : km + intervalo,
       intervalo_preventiva: intervalo,
       status: 'disponivel',
-    });
+    } as any);
     toast.success('Veículo cadastrado');
     setShowModal(false);
     setForm({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
@@ -50,7 +52,7 @@ const VeiculosPage: React.FC = () => {
 
   const openEdit = (v: typeof veiculos[0]) => {
     setEditId(v.id);
-    setEditForm({ tipo: v.tipo, filialId: v.filial_id || '', motoristaId: v.motorista_id || '', kmProximaPreventiva: String(v.km_proxima_preventiva) });
+    setEditForm({ tipo: v.tipo, filialId: v.filial_id || '', motoristaId: v.motorista_id || '', kmUltimaPreventiva: String(v.km_ultima_preventiva || 0) });
   };
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -70,11 +72,15 @@ const VeiculosPage: React.FC = () => {
       }
     }
 
+    const kmUltima = Number(editForm.kmUltimaPreventiva) || 0;
+    const veiculo = veiculos.find(v => v.id === editId);
+    const intervalo = veiculo?.intervalo_preventiva || 30000;
     await updateVeiculo(editId, {
       tipo: editForm.tipo,
       filial_id: editForm.filialId,
       motorista_id: editForm.motoristaId || null,
-      km_proxima_preventiva: Number(editForm.kmProximaPreventiva) || 0,
+      km_ultima_preventiva: kmUltima,
+      km_proxima_preventiva: kmUltima + intervalo,
     } as any);
     toast.success('Veículo atualizado');
     setEditId(null);
@@ -117,6 +123,7 @@ const VeiculosPage: React.FC = () => {
                 <TableHead>Filial</TableHead>
                 <TableHead>Motorista</TableHead>
                 <TableHead className="text-right">KM Atual</TableHead>
+                <TableHead className="text-right">Últ. Preventiva</TableHead>
                 <TableHead className="text-right">Próx. Preventiva</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Ações</TableHead>
@@ -130,6 +137,7 @@ const VeiculosPage: React.FC = () => {
                   <TableCell>{filiais.find(f => f.id === v.filial_id)?.nome ?? '—'}</TableCell>
                   <TableCell>{motoristas.find(m => m.id === v.motorista_id)?.nome ?? '—'}</TableCell>
                   <TableCell className="text-right font-mono">{v.km_atual.toLocaleString('pt-BR')}</TableCell>
+                  <TableCell className="text-right font-mono">{(v.km_ultima_preventiva || 0).toLocaleString('pt-BR')}</TableCell>
                   <TableCell className="text-right font-mono">{v.km_proxima_preventiva.toLocaleString('pt-BR')}</TableCell>
                   <TableCell><StatusBadge status={v.status} /></TableCell>
                   <TableCell>
@@ -213,7 +221,7 @@ const VeiculosPage: React.FC = () => {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div><Label>KM Atual</Label><Input type="number" value={form.kmAtual} onChange={e => setForm(p => ({ ...p, kmAtual: e.target.value }))} /></div>
-              <div><Label>Próx. Preventiva</Label><Input type="number" value={form.kmProximaPreventiva} onChange={e => setForm(p => ({ ...p, kmProximaPreventiva: e.target.value }))} /></div>
+              <div><Label>Últ. Preventiva (km)</Label><Input type="number" value={form.kmProximaPreventiva} onChange={e => setForm(p => ({ ...p, kmProximaPreventiva: e.target.value }))} /></div>
               <div><Label>Intervalo (km)</Label><Input type="number" value={form.intervaloPreventiva} onChange={e => setForm(p => ({ ...p, intervaloPreventiva: e.target.value }))} /></div>
             </div>
             <div className="flex justify-end gap-3">
@@ -250,8 +258,9 @@ const VeiculosPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Próx. Preventiva (km)</Label>
-              <Input type="number" value={editForm.kmProximaPreventiva} onChange={e => setEditForm(p => ({ ...p, kmProximaPreventiva: e.target.value }))} />
+            <div><Label>Últ. Preventiva Realizada (km)</Label>
+              <Input type="number" value={editForm.kmUltimaPreventiva} onChange={e => setEditForm(p => ({ ...p, kmUltimaPreventiva: e.target.value }))} />
+              <p className="text-xs text-muted-foreground mt-1">Próx. preventiva será calculada automaticamente (últ. preventiva + intervalo)</p>
             </div>
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setEditId(null)}>Cancelar</Button>

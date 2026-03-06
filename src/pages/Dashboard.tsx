@@ -111,6 +111,7 @@ const Dashboard: React.FC = () => {
                 <TableHead>Tipo</TableHead>
                 <TableHead>Filial</TableHead>
                 <TableHead className="text-right">KM Atual</TableHead>
+                <TableHead className="text-right">Últ. Preventiva</TableHead>
                 <TableHead className="text-right">Próx. Preventiva</TableHead>
                 <TableHead className="text-right">Diferença</TableHead>
                 <TableHead>Status</TableHead>
@@ -123,7 +124,7 @@ const Dashboard: React.FC = () => {
             <TableBody>
               {filteredVeiculos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Nenhum veículo encontrado</TableCell>
+                  <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhum veículo encontrado</TableCell>
                 </TableRow>
               ) : (
                 filteredVeiculos.map(v => {
@@ -135,6 +136,7 @@ const Dashboard: React.FC = () => {
                       <TableCell>{v.tipo}</TableCell>
                       <TableCell className="text-sm">{getFilialNome(v.filial_id)}</TableCell>
                       <TableCell className="text-right font-mono">{v.km_atual.toLocaleString('pt-BR')}</TableCell>
+                      <TableCell className="text-right font-mono">{(v.km_ultima_preventiva || 0).toLocaleString('pt-BR')}</TableCell>
                       <TableCell className="text-right font-mono">{v.km_proxima_preventiva.toLocaleString('pt-BR')}</TableCell>
                       <TableCell className={`text-right font-mono font-semibold ${diff <= 0 ? 'text-destructive' : diff <= PREVENTIVA_THRESHOLD ? 'text-warning' : ''}`}>
                         {diff.toLocaleString('pt-BR')} km

@@ -31,6 +31,7 @@ export interface Veiculo {
   filial_id: string | null;
   motorista_id: string | null;
   km_atual: number;
+  km_ultima_preventiva: number;
   km_proxima_preventiva: number;
   intervalo_preventiva: number;
   status: 'disponivel' | 'em_ocorrencia' | 'finalizada';
@@ -113,6 +114,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       filial_id: v.filial_id || null,
       motorista_id: v.motorista_id || null,
       km_atual: v.km_atual || 0,
+      km_ultima_preventiva: v.km_ultima_preventiva || 0,
       km_proxima_preventiva: v.km_proxima_preventiva || 30000,
       intervalo_preventiva: v.intervalo_preventiva || 30000,
       status: 'disponivel',
@@ -170,18 +172,20 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Get vehicle to calculate next preventive
     const veiculo = veiculos.find(v => v.id === man.veiculo_id);
-    const nextKm = man.tipo_manutencao === 'preventiva' && veiculo
-      ? veiculo.km_atual + veiculo.intervalo_preventiva
-      : veiculo?.km_proxima_preventiva || 0;
-
-    await supabase.from('frota_status_atual').update({
+    const updateFields: Record<string, unknown> = {
       status: 'disponivel',
       manutencao_ativa_id: null,
       data_parada: null,
       previsao_retorno: null,
-      km_proxima_preventiva: nextKm,
       updated_at: now.toISOString(),
-    }).eq('id', man.veiculo_id);
+    };
+
+    if (man.tipo_manutencao === 'preventiva' && veiculo) {
+      updateFields.km_ultima_preventiva = veiculo.km_atual;
+      updateFields.km_proxima_preventiva = veiculo.km_atual + veiculo.intervalo_preventiva;
+    }
+
+    await supabase.from('frota_status_atual').update(updateFields).eq('id', man.veiculo_id);
 
     await refresh();
   }, [refresh, manutencoes, veiculos]);
@@ -228,6 +232,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (data.filial_id !== undefined) updateData.filial_id = data.filial_id;
     if (data.motorista_id !== undefined) updateData.motorista_id = data.motorista_id || null;
     if (data.km_proxima_preventiva !== undefined) updateData.km_proxima_preventiva = data.km_proxima_preventiva;
+    if ((data as any).km_ultima_preventiva !== undefined) updateData.km_ultima_preventiva = (data as any).km_ultima_preventiva;
     updateData.updated_at = new Date().toISOString();
     const { error } = await supabase.from('frota_status_atual').update(updateData).eq('id', id);
     if (error) { toast.error(error.message); return; }
