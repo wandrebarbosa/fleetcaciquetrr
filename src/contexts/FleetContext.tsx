@@ -172,18 +172,20 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Get vehicle to calculate next preventive
     const veiculo = veiculos.find(v => v.id === man.veiculo_id);
-    const nextKm = man.tipo_manutencao === 'preventiva' && veiculo
-      ? veiculo.km_atual + veiculo.intervalo_preventiva
-      : veiculo?.km_proxima_preventiva || 0;
-
-    await supabase.from('frota_status_atual').update({
+    const updateFields: Record<string, unknown> = {
       status: 'disponivel',
       manutencao_ativa_id: null,
       data_parada: null,
       previsao_retorno: null,
-      km_proxima_preventiva: nextKm,
       updated_at: now.toISOString(),
-    }).eq('id', man.veiculo_id);
+    };
+
+    if (man.tipo_manutencao === 'preventiva' && veiculo) {
+      updateFields.km_ultima_preventiva = veiculo.km_atual;
+      updateFields.km_proxima_preventiva = veiculo.km_atual + veiculo.intervalo_preventiva;
+    }
+
+    await supabase.from('frota_status_atual').update(updateFields).eq('id', man.veiculo_id);
 
     await refresh();
   }, [refresh, manutencoes, veiculos]);
