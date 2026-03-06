@@ -33,16 +33,18 @@ const VeiculosPage: React.FC = () => {
     if (veiculos.some(v => v.placa === form.placa.trim().toUpperCase())) { toast.error('Placa já cadastrada'); return; }
     const km = Number(form.kmAtual) || 0;
     const intervalo = Number(form.intervaloPreventiva) || 30000;
+    const kmUltimaPreventiva = Number(form.kmProximaPreventiva) || 0; // field reused as "última preventiva"
     await addVeiculo({
       placa: form.placa.trim().toUpperCase(),
       tipo: form.tipo,
       filial_id: form.filialId,
       motorista_id: form.motoristaId || null,
       km_atual: km,
-      km_proxima_preventiva: Number(form.kmProximaPreventiva) || (km + intervalo),
+      km_ultima_preventiva: kmUltimaPreventiva,
+      km_proxima_preventiva: kmUltimaPreventiva > 0 ? kmUltimaPreventiva + intervalo : km + intervalo,
       intervalo_preventiva: intervalo,
       status: 'disponivel',
-    });
+    } as any);
     toast.success('Veículo cadastrado');
     setShowModal(false);
     setForm({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
@@ -219,7 +221,7 @@ const VeiculosPage: React.FC = () => {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div><Label>KM Atual</Label><Input type="number" value={form.kmAtual} onChange={e => setForm(p => ({ ...p, kmAtual: e.target.value }))} /></div>
-              <div><Label>Próx. Preventiva</Label><Input type="number" value={form.kmProximaPreventiva} onChange={e => setForm(p => ({ ...p, kmProximaPreventiva: e.target.value }))} /></div>
+              <div><Label>Últ. Preventiva (km)</Label><Input type="number" value={form.kmProximaPreventiva} onChange={e => setForm(p => ({ ...p, kmProximaPreventiva: e.target.value }))} /></div>
               <div><Label>Intervalo (km)</Label><Input type="number" value={form.intervaloPreventiva} onChange={e => setForm(p => ({ ...p, intervaloPreventiva: e.target.value }))} /></div>
             </div>
             <div className="flex justify-end gap-3">
