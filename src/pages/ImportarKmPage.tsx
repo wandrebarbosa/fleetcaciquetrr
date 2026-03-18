@@ -337,6 +337,20 @@ const ImportarKmPage: React.FC = () => {
                   <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                   {syncing ? 'Buscando dados...' : 'Sincronizar com Autotrac'}
                 </Button>
+                {syncing && syncProgress.phase && (
+                  <div className="flex-1 max-w-xs space-y-1">
+                    <p className="text-xs text-muted-foreground">{syncProgress.phase}</p>
+                    <Progress 
+                      value={syncProgress.total > 0 ? (syncProgress.current / syncProgress.total) * 100 : undefined} 
+                      className="h-2" 
+                    />
+                    {syncProgress.total > 0 && (
+                      <p className="text-xs text-muted-foreground text-right">
+                        {syncProgress.current}/{syncProgress.total} veículos
+                      </p>
+                    )}
+                  </div>
+                )}
                 {autotracRows.length > 0 && (
                   <Button variant="outline" onClick={handleExportJson}>
                     <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar JSON
