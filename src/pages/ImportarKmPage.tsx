@@ -119,8 +119,8 @@ const ImportarKmPage: React.FC = () => {
   // --- Autotrac Sync ---
   const handleAutotracSync = async () => {
     setSyncing(true);
+    setSyncProgress({ current: 0, total: 0, phase: 'Buscando contas Autotrac...' });
     try {
-      // Step 1: Get accounts
       const { data: accountsData, error: accErr } = await supabase.functions.invoke('autotrac-sync', {
         body: { action: 'accounts' },
       });
@@ -130,14 +130,14 @@ const ImportarKmPage: React.FC = () => {
       if (accounts.length === 0) {
         toast.error('Nenhuma conta Autotrac encontrada');
         setSyncing(false);
+        setSyncProgress({ current: 0, total: 0, phase: '' });
         return;
       }
 
-      // Use first account (most common scenario)
       const accountCode = accounts[0].Code;
-
-      // Step 2: Sync all vehicles (send fleet placas to filter on server)
       const fleetPlacas = veiculos.map(v => v.placa);
+      setSyncProgress({ current: 0, total: fleetPlacas.length, phase: 'Buscando telemetria dos veículos...' });
+
       const { data: syncData, error: syncErr } = await supabase.functions.invoke('autotrac-sync', {
         body: { action: 'sync-all', accountCode, fleetPlacas },
       });
@@ -145,10 +145,10 @@ const ImportarKmPage: React.FC = () => {
       if (syncErr) throw new Error(syncErr.message);
       const results = Array.isArray(syncData) ? syncData : [];
 
-      // Match Autotrac vehicles with fleet by VehicleName (usually contains placa)
+      setSyncProgress({ current: results.length, total: fleetPlacas.length, phase: 'Processando resultados...' });
+
       const mapped: AutotracRow[] = results.map((r: any) => {
         const name = (r.vehicleName || '').toUpperCase();
-        // Try to extract placa from VehicleName
         const placaMatch = name.match(/[A-Z]{3}\d[A-Z0-9]\d{2}/);
         const placa = placaMatch ? placaMatch[0] : name.replace(/[-\s]/g, '');
 
@@ -178,6 +178,7 @@ const ImportarKmPage: React.FC = () => {
       toast.error(`Erro ao sincronizar: ${err.message}`);
     } finally {
       setSyncing(false);
+      setSyncProgress({ current: 0, total: 0, phase: '' });
     }
   };
 
