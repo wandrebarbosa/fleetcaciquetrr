@@ -60,6 +60,7 @@ const ImportarKmPage: React.FC = () => {
   // Autotrac state
   const [autotracRows, setAutotracRows] = useState<AutotracRow[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, phase: '' });
   const [importingAutotrac, setImportingAutotrac] = useState(false);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
