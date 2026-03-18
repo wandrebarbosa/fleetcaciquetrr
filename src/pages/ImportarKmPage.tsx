@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
 import { Upload, FileSpreadsheet, Check, AlertTriangle, X, RefreshCw, Satellite, ExternalLink } from 'lucide-react';
 import { useFleet } from '@/contexts/FleetContext';
 import { supabase } from '@/integrations/supabase/client';
