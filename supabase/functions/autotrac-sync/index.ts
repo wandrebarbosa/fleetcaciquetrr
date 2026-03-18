@@ -99,31 +99,38 @@ Deno.serve(async (req) => {
 
       console.log(`Matched vehicles to fetch telemetry: ${matchedVehicles.length}`);
 
-      // Fetch telemetry in parallel for matched vehicles only
-      const results = await Promise.all(
-        matchedVehicles.map(async (v: any) => {
-          try {
-            const telemetry = await autotracFetch(
-              `/v1/accounts/${accountCode}/vehicles/${v.VehicleCode}/telemetryevents?_eventNumber=1&_limit=1`
-            );
-            const events = telemetry?.Data || [];
-            const latest = events[0];
-            const hodometer = latest?.HodometerEnd ?? latest?.HodometerStart ?? null;
-            return {
-              vehicleName: v.VehicleName || "",
-              vehicleCode: v.VehicleCode,
-              hodometerEnd: hodometer,
-            };
-          } catch (e) {
-            return {
-              vehicleName: v.VehicleName || "",
-              vehicleCode: v.VehicleCode,
-              hodometerEnd: null,
-              error: e instanceof Error ? e.message : "Unknown error",
-            };
-          }
-        })
-      );
+      // Process in batches of 5 to avoid timeout
+      const BATCH_SIZE = 5;
+      const results: any[] = [];
+
+      for (let i = 0; i < matchedVehicles.length; i += BATCH_SIZE) {
+        const batch = matchedVehicles.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (v: any) => {
+            try {
+              const telemetry = await autotracFetch(
+                `/v1/accounts/${accountCode}/vehicles/${v.VehicleCode}/telemetryevents?_eventNumber=1&_limit=1`
+              );
+              const events = telemetry?.Data || [];
+              const latest = events[0];
+              const hodometer = latest?.HodometerEnd ?? latest?.HodometerStart ?? null;
+              return {
+                vehicleName: v.VehicleName || "",
+                vehicleCode: v.VehicleCode,
+                hodometerEnd: hodometer,
+              };
+            } catch (e) {
+              return {
+                vehicleName: v.VehicleName || "",
+                vehicleCode: v.VehicleCode,
+                hodometerEnd: null,
+                error: e instanceof Error ? e.message : "Unknown error",
+              };
+            }
+          })
+        );
+        results.push(...batchResults);
+      }
 
       return new Response(JSON.stringify(results), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
