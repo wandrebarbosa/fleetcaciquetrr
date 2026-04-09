@@ -380,7 +380,7 @@ const ImportarKmPage: React.FC = () => {
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1"><FileSpreadsheet className="w-4 h-4" />{rows.length} linhas</span>
                     {pendingCount > 0 && <span className="text-primary">{pendingCount} pendentes</span>}
-                    {successCount > 0 && <span className="text-green-600">{successCount} atualizados</span>}
+                    {successCount > 0 && <span className="text-primary">{successCount} atualizados</span>}
                     {errorCount > 0 && <span className="text-destructive">{errorCount} erros</span>}
                   </div>
                 )}
@@ -409,7 +409,7 @@ const ImportarKmPage: React.FC = () => {
                         <TableRow key={i}>
                           <TableCell>
                             {row.status === 'pending' && <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />}
-                            {row.status === 'success' && <Check className="w-4 h-4 text-green-600" />}
+                            {row.status === 'success' && <Check className="w-4 h-4 text-primary" />}
                             {row.status === 'error' && <AlertTriangle className="w-4 h-4 text-destructive" />}
                           </TableCell>
                           <TableCell className="font-mono font-semibold">{row.placa}</TableCell>
@@ -474,7 +474,7 @@ const ImportarKmPage: React.FC = () => {
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span>{autotracRows.length} veículos</span>
                     {autotracPending > 0 && <span className="text-primary">{autotracPending} pendentes</span>}
-                    {autotracSuccess > 0 && <span className="text-green-600">{autotracSuccess} atualizados</span>}
+                    {autotracSuccess > 0 && <span className="text-primary">{autotracSuccess} atualizados</span>}
                     {autotracSkipped > 0 && <span className="text-muted-foreground">{autotracSkipped} ignorados</span>}
                     {autotracError > 0 && <span className="text-destructive">{autotracError} erros</span>}
                   </div>
@@ -504,7 +504,7 @@ const ImportarKmPage: React.FC = () => {
                         <TableRow key={i}>
                           <TableCell>
                             {row.status === 'pending' && <RefreshCw className="w-4 h-4 text-primary" />}
-                            {row.status === 'success' && <Check className="w-4 h-4 text-green-600" />}
+                            {row.status === 'success' && <Check className="w-4 h-4 text-primary" />}
                             {row.status === 'error' && <AlertTriangle className="w-4 h-4 text-destructive" />}
                             {row.status === 'skipped' && <X className="w-4 h-4 text-muted-foreground" />}
                           </TableCell>
