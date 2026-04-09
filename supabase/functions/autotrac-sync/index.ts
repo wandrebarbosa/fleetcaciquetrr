@@ -7,8 +7,65 @@ const corsHeaders = {
 };
 
 const AUTOTRAC_BASE = "https://aapi4.autotrac-online.com.br/telemetryapi";
+const MAX_BATCH_VEHICLES = 3;
+const BATCH_TIMEOUT_MS = 15000;
 
-async function autotracFetch(path: string) {
+type MatchedVehicle = {
+  vehicleName: string;
+  vehicleCode: number;
+  placa: string;
+};
+
+const jsonResponse = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const normalizePlaca = (value: string) => value.replace(/[-\s]/g, "").toUpperCase();
+
+const parseAccountCode = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const parseFleetPlacas = (value: unknown) => {
+  if (!Array.isArray(value)) return null;
+
+  const placas = value
+    .filter((item): item is string => typeof item === "string")
+    .map(normalizePlaca)
+    .filter(Boolean);
+
+  return Array.from(new Set(placas));
+};
+
+const parseVehicles = (value: unknown): MatchedVehicle[] | null => {
+  if (!Array.isArray(value)) return null;
+
+  const parsed = value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+
+      const candidate = item as Record<string, unknown>;
+      const vehicleCode = Number(candidate.vehicleCode);
+      const vehicleName = typeof candidate.vehicleName === "string" ? candidate.vehicleName : "";
+      const placa = typeof candidate.placa === "string" ? normalizePlaca(candidate.placa) : "";
+
+      if (!Number.isFinite(vehicleCode) || !vehicleName || !placa) return null;
+
+      return {
+        vehicleCode,
+        vehicleName,
+        placa,
+      } satisfies MatchedVehicle;
+    })
+    .filter((item): item is MatchedVehicle => Boolean(item));
+
+  return parsed.length === value.length ? parsed : null;
+};
+
+async function autotracFetch(path: string, signal?: AbortSignal) {
   const login = Deno.env.get("AUTOTRAC_LOGIN");
   const password = Deno.env.get("AUTOTRAC_PASSWORD");
   const subscriptionKey = Deno.env.get("AUTOTRAC_SUBSCRIPTION_KEY");
@@ -19,22 +76,97 @@ async function autotracFetch(path: string) {
 
   console.log(`Autotrac fetch: ${AUTOTRAC_BASE}${path}`);
 
-  const res = await fetch(`${AUTOTRAC_BASE}${path}`, {
-    headers: {
-      Authorization: `Basic ${login}:${password}`,
-      "Ocp-Apim-Subscription-Key": subscriptionKey,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-  });
+  try {
+    const res = await fetch(`${AUTOTRAC_BASE}${path}`, {
+      headers: {
+        Authorization: `Basic ${login}:${password}`,
+        "Ocp-Apim-Subscription-Key": subscriptionKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      signal,
+    });
 
-  if (!res.ok) {
-    const body = await res.text();
-    console.error(`Autotrac API error [${res.status}]: body=${body}`);
-    throw new Error(`Autotrac API [${res.status}]: ${body}`);
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`Autotrac API error [${res.status}]: body=${body}`);
+      throw new Error(`Autotrac API [${res.status}]: ${body}`);
+    }
+
+    return res.json();
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`Tempo limite do lote excedido (${BATCH_TIMEOUT_MS / 1000}s)`);
+    }
+
+    throw error;
   }
+}
 
-  return res.json();
+async function getMatchedVehicles(accountCode: number, fleetPlacas: string[]) {
+  const vehiclesData = await autotracFetch(
+    `/v1/accounts/${accountCode}/authorizedvehicles?_limit=500`
+  );
+  const vehicles = Array.isArray(vehiclesData) ? vehiclesData : vehiclesData?.Data || [];
+  const placaSet = new Set(fleetPlacas);
+
+  console.log(`Total Autotrac vehicles: ${vehicles.length}, fleet placas: ${placaSet.size}`);
+
+  const matchedVehicles = vehicles
+    .map((vehicle: any) => {
+      const name = normalizePlaca(vehicle.VehicleName || "");
+      const placa = Array.from(placaSet).find((candidate) => name.includes(candidate));
+
+      if (!placa) return null;
+
+      return {
+        vehicleName: vehicle.VehicleName || "",
+        vehicleCode: Number(vehicle.VehicleCode),
+        placa,
+      } satisfies MatchedVehicle;
+    })
+    .filter((vehicle): vehicle is MatchedVehicle => Boolean(vehicle));
+
+  console.log(`Matched vehicles to fetch telemetry: ${matchedVehicles.length}`);
+  return matchedVehicles;
+}
+
+async function fetchTelemetryBatch(accountCode: number, vehicles: MatchedVehicle[]) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), BATCH_TIMEOUT_MS);
+
+  try {
+    return await Promise.all(
+      vehicles.map(async (vehicle) => {
+        try {
+          const telemetry = await autotracFetch(
+            `/v1/accounts/${accountCode}/vehicles/${vehicle.vehicleCode}/telemetryevents?_eventNumber=1&_limit=1`,
+            controller.signal
+          );
+          const events = telemetry?.Data || [];
+          const latest = events[0];
+          const hodometer = latest?.HodometerEnd ?? latest?.HodometerStart ?? null;
+
+          return {
+            vehicleName: vehicle.vehicleName,
+            vehicleCode: vehicle.vehicleCode,
+            placa: vehicle.placa,
+            hodometerEnd: hodometer,
+          };
+        } catch (error) {
+          return {
+            vehicleName: vehicle.vehicleName,
+            vehicleCode: vehicle.vehicleCode,
+            placa: vehicle.placa,
+            hodometerEnd: null,
+            error: error instanceof Error ? error.message : "Unknown error",
+          };
+        }
+      })
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -44,10 +176,7 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   const supabase = createClient(
@@ -59,94 +188,79 @@ Deno.serve(async (req) => {
   const token = authHeader.replace("Bearer ", "");
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
   if (claimsError || !claimsData?.claims) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   try {
-    const { action, accountCode, fleetPlacas } = await req.json();
+    const body = await req.json();
+    const action = body?.action;
 
     if (action === "accounts") {
       const data = await autotracFetch("/v1/accounts");
-      return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse(data);
     }
 
-    if (action === "sync-all" && accountCode) {
-      // Get all authorized vehicles
-      const vehiclesData = await autotracFetch(
-        `/v1/accounts/${accountCode}/authorizedvehicles?_limit=500`
-      );
-      const vehicles = Array.isArray(vehiclesData) ? vehiclesData : (vehiclesData?.Data || []);
+    if (action === "matched-vehicles") {
+      const accountCode = parseAccountCode(body?.accountCode);
+      const fleetPlacas = parseFleetPlacas(body?.fleetPlacas);
 
-      // Build a set of fleet placas for fast lookup
-      const placaSet = new Set<string>(
-        (fleetPlacas || []).map((p: string) => p.replace(/[-\s]/g, "").toUpperCase())
-      );
-
-      console.log(`Total Autotrac vehicles: ${vehicles.length}, fleet placas: ${placaSet.size}`);
-
-      // Filter: only fetch telemetry for vehicles whose name contains a fleet placa
-      const matchedVehicles = placaSet.size > 0
-        ? vehicles.filter((v: any) => {
-            const name = (v.VehicleName || "").toUpperCase().replace(/[-\s]/g, "");
-            return Array.from(placaSet).some((placa) => name.includes(placa));
-          })
-        : vehicles;
-
-      console.log(`Matched vehicles to fetch telemetry: ${matchedVehicles.length}`);
-
-      // Process in batches of 5 to avoid timeout
-      const BATCH_SIZE = 5;
-      const results: any[] = [];
-
-      for (let i = 0; i < matchedVehicles.length; i += BATCH_SIZE) {
-        const batch = matchedVehicles.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(
-          batch.map(async (v: any) => {
-            try {
-              const telemetry = await autotracFetch(
-                `/v1/accounts/${accountCode}/vehicles/${v.VehicleCode}/telemetryevents?_eventNumber=1&_limit=1`
-              );
-              const events = telemetry?.Data || [];
-              const latest = events[0];
-              const hodometer = latest?.HodometerEnd ?? latest?.HodometerStart ?? null;
-              return {
-                vehicleName: v.VehicleName || "",
-                vehicleCode: v.VehicleCode,
-                hodometerEnd: hodometer,
-              };
-            } catch (e) {
-              return {
-                vehicleName: v.VehicleName || "",
-                vehicleCode: v.VehicleCode,
-                hodometerEnd: null,
-                error: e instanceof Error ? e.message : "Unknown error",
-              };
-            }
-          })
-        );
-        results.push(...batchResults);
+      if (!accountCode || !fleetPlacas) {
+        return jsonResponse({ error: "accountCode e fleetPlacas são obrigatórios" }, 400);
       }
 
-      return new Response(JSON.stringify(results), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const matchedVehicles = await getMatchedVehicles(accountCode, fleetPlacas);
+      return jsonResponse(matchedVehicles);
     }
 
-    return new Response(
-      JSON.stringify({ error: "Invalid action. Use: accounts, sync-all" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    if (action === "sync-batch") {
+      const accountCode = parseAccountCode(body?.accountCode);
+      const vehicles = parseVehicles(body?.vehicles);
+
+      if (!accountCode || !vehicles?.length) {
+        return jsonResponse({ error: "accountCode e vehicles são obrigatórios" }, 400);
+      }
+
+      if (vehicles.length > MAX_BATCH_VEHICLES) {
+        return jsonResponse(
+          { error: `Envie no máximo ${MAX_BATCH_VEHICLES} veículos por lote` },
+          400
+        );
+      }
+
+      const results = await fetchTelemetryBatch(accountCode, vehicles);
+      return jsonResponse(results);
+    }
+
+    if (action === "sync-all") {
+      const accountCode = parseAccountCode(body?.accountCode);
+      const fleetPlacas = parseFleetPlacas(body?.fleetPlacas);
+
+      if (!accountCode || !fleetPlacas?.length) {
+        return jsonResponse({ error: "accountCode e fleetPlacas são obrigatórios" }, 400);
+      }
+
+      if (fleetPlacas.length > MAX_BATCH_VEHICLES) {
+        return jsonResponse(
+          {
+            error:
+              "sync-all foi descontinuado para lotes grandes. Use matched-vehicles + sync-batch com até 3 veículos por chamada.",
+          },
+          400
+        );
+      }
+
+      const matchedVehicles = await getMatchedVehicles(accountCode, fleetPlacas);
+      const results = await fetchTelemetryBatch(accountCode, matchedVehicles);
+      return jsonResponse(results);
+    }
+
+    return jsonResponse(
+      { error: "Invalid action. Use: accounts, matched-vehicles, sync-batch, sync-all" },
+      400
     );
   } catch (error) {
     console.error("Autotrac sync error:", error);
     const msg = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: msg }, 500);
   }
 });

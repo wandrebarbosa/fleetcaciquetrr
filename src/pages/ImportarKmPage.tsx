@@ -27,6 +27,14 @@ interface AutotracRow {
   message?: string;
 }
 
+interface AutotracMatchedVehicle {
+  vehicleName: string;
+  vehicleCode: number;
+  placa: string;
+}
+
+const AUTOTRAC_FRONTEND_BATCH_SIZE = 3;
+
 const parseCSV = (text: string): CsvRow[] => {
   const lines = text.trim().split(/\r?\n/);
   const start = lines[0]?.toLowerCase().includes('placa') ? 1 : 0;
@@ -51,13 +59,22 @@ const parseCSV = (text: string): CsvRow[] => {
   return rows;
 };
 
+const chunkArray = <T,>(items: T[], size: number) => {
+  const chunks: T[][] = [];
+
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+
+  return chunks;
+};
+
 const ImportarKmPage: React.FC = () => {
   const { veiculos, refresh } = useFleet();
   const [rows, setRows] = useState<CsvRow[]>([]);
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Autotrac state
   const [autotracRows, setAutotracRows] = useState<AutotracRow[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, phase: '' });
@@ -116,63 +133,152 @@ const ImportarKmPage: React.FC = () => {
     toast.success(`${successCount} veículo(s) atualizado(s) com sucesso`);
   };
 
-  // --- Autotrac Sync ---
   const handleAutotracSync = async () => {
     setSyncing(true);
+    setAutotracRows([]);
     setSyncProgress({ current: 0, total: 0, phase: 'Buscando contas Autotrac...' });
+
     try {
       const { data: accountsData, error: accErr } = await supabase.functions.invoke('autotrac-sync', {
         body: { action: 'accounts' },
       });
 
       if (accErr) throw new Error(accErr.message);
+
       const accounts = Array.isArray(accountsData) ? accountsData : [];
       if (accounts.length === 0) {
         toast.error('Nenhuma conta Autotrac encontrada');
-        setSyncing(false);
-        setSyncProgress({ current: 0, total: 0, phase: '' });
         return;
       }
 
-      const accountCode = accounts[0].Code;
-      const fleetPlacas = veiculos.map(v => v.placa);
-      setSyncProgress({ current: 0, total: fleetPlacas.length, phase: 'Buscando telemetria dos veículos...' });
+      const accountCode = Number(accounts[0].Code);
+      const fleetPlacas = veiculos.map(v => formatPlaca(v.placa));
 
-      const { data: syncData, error: syncErr } = await supabase.functions.invoke('autotrac-sync', {
-        body: { action: 'sync-all', accountCode, fleetPlacas },
+      setSyncProgress({ current: 0, total: fleetPlacas.length, phase: 'Localizando veículos autorizados...' });
+
+      const { data: matchedData, error: matchedErr } = await supabase.functions.invoke('autotrac-sync', {
+        body: { action: 'matched-vehicles', accountCode, fleetPlacas },
       });
 
-      if (syncErr) throw new Error(syncErr.message);
-      const results = Array.isArray(syncData) ? syncData : [];
+      if (matchedErr) throw new Error(matchedErr.message);
 
-      setSyncProgress({ current: results.length, total: fleetPlacas.length, phase: 'Processando resultados...' });
+      const matchedVehicles: AutotracMatchedVehicle[] = Array.isArray(matchedData) ? matchedData : [];
+      if (matchedVehicles.length === 0) {
+        toast.info('Nenhum veículo da frota foi localizado na Autotrac');
+        return;
+      }
 
-      const mapped: AutotracRow[] = results.map((r: any) => {
-        const name = (r.vehicleName || '').toUpperCase();
-        const placaMatch = name.match(/[A-Z]{3}\d[A-Z0-9]\d{2}/);
-        const placa = placaMatch ? placaMatch[0] : name.replace(/[-\s]/g, '');
+      const chunks = chunkArray(matchedVehicles, AUTOTRAC_FRONTEND_BATCH_SIZE);
+      const results: Array<{
+        vehicleName: string;
+        vehicleCode: number;
+        hodometerEnd: number | null;
+        placa?: string;
+        error?: string;
+      }> = [];
 
-        const veiculo = veiculos.find(v => formatPlaca(v.placa) === placa);
+      setSyncProgress({ current: 0, total: matchedVehicles.length, phase: 'Buscando telemetria dos veículos...' });
 
-        if (!r.hodometerEnd && r.hodometerEnd !== 0) {
-          return { ...r, placa, status: 'skipped' as const, message: 'Sem dados de hodômetro' };
+      for (let i = 0; i < chunks.length; i++) {
+        const batch = chunks[i];
+        const { data: batchData, error: batchErr } = await supabase.functions.invoke('autotrac-sync', {
+          body: { action: 'sync-batch', accountCode, vehicles: batch },
+        });
+
+        if (batchErr) {
+          results.push(
+            ...batch.map(vehicle => ({
+              vehicleName: vehicle.vehicleName,
+              vehicleCode: vehicle.vehicleCode,
+              hodometerEnd: null,
+              placa: vehicle.placa,
+              error: batchErr.message,
+            }))
+          );
+        } else {
+          results.push(...(Array.isArray(batchData) ? batchData : []));
+        }
+
+        setSyncProgress({
+          current: Math.min((i + 1) * AUTOTRAC_FRONTEND_BATCH_SIZE, matchedVehicles.length),
+          total: matchedVehicles.length,
+          phase: 'Buscando telemetria dos veículos...',
+        });
+      }
+
+      setSyncProgress({ current: matchedVehicles.length, total: matchedVehicles.length, phase: 'Processando resultados...' });
+
+      const mapped: AutotracRow[] = results.map((result: any) => {
+        const extractedPlaca = typeof result.placa === 'string' && result.placa
+          ? result.placa.replace(/[-\s]/g, '').toUpperCase()
+          : ((result.vehicleName || '').toUpperCase().match(/[A-Z]{3}\d[A-Z0-9]\d{2}/)?.[0] || (result.vehicleName || '').replace(/[-\s]/g, ''));
+
+        const veiculo = veiculos.find(v => formatPlaca(v.placa) === extractedPlaca);
+
+        if (result.error) {
+          return {
+            vehicleName: result.vehicleName || '',
+            vehicleCode: result.vehicleCode,
+            hodometerEnd: null,
+            placa: extractedPlaca,
+            status: 'error',
+            message: result.error,
+          };
+        }
+
+        if (!result.hodometerEnd && result.hodometerEnd !== 0) {
+          return {
+            vehicleName: result.vehicleName || '',
+            vehicleCode: result.vehicleCode,
+            hodometerEnd: null,
+            placa: extractedPlaca,
+            status: 'skipped',
+            message: 'Sem dados de hodômetro',
+          };
         }
 
         if (!veiculo) {
-          return { ...r, placa, status: 'skipped' as const, message: 'Placa não encontrada na frota' };
+          return {
+            vehicleName: result.vehicleName || '',
+            vehicleCode: result.vehicleCode,
+            hodometerEnd: result.hodometerEnd,
+            placa: extractedPlaca,
+            status: 'skipped',
+            message: 'Placa não encontrada na frota',
+          };
         }
 
-        const kmAutotrac = Math.round(r.hodometerEnd);
+        const kmAutotrac = Math.round(result.hodometerEnd);
         if (kmAutotrac <= veiculo.km_atual) {
-          return { ...r, placa, hodometerEnd: kmAutotrac, status: 'skipped' as const, message: `KM atual (${veiculo.km_atual.toLocaleString('pt-BR')}) ≥ telemetria` };
+          return {
+            vehicleName: result.vehicleName || '',
+            vehicleCode: result.vehicleCode,
+            hodometerEnd: kmAutotrac,
+            placa: extractedPlaca,
+            status: 'skipped',
+            message: `KM atual (${veiculo.km_atual.toLocaleString('pt-BR')}) ≥ telemetria`,
+          };
         }
 
-        return { ...r, placa, hodometerEnd: kmAutotrac, status: 'pending' as const };
+        return {
+          vehicleName: result.vehicleName || '',
+          vehicleCode: result.vehicleCode,
+          hodometerEnd: kmAutotrac,
+          placa: extractedPlaca,
+          status: 'pending',
+        };
       });
 
       setAutotracRows(mapped);
-      const pendentes = mapped.filter(r => r.status === 'pending').length;
-      toast.info(`${results.length} veículos encontrados, ${pendentes} com KM para atualizar`);
+
+      const pendentes = mapped.filter(row => row.status === 'pending').length;
+      const erros = mapped.filter(row => row.status === 'error').length;
+
+      if (erros > 0) {
+        toast.error(`${erros} veículo(s) retornaram erro na consulta da Autotrac`);
+      }
+
+      toast.info(`${matchedVehicles.length} veículos consultados, ${pendentes} com KM para atualizar`);
     } catch (err: any) {
       console.error('Autotrac sync error:', err);
       toast.error(`Erro ao sincronizar: ${err.message}`);
@@ -263,7 +369,6 @@ const ImportarKmPage: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* ===== CSV TAB ===== */}
           <TabsContent value="csv" className="space-y-4 mt-4">
             <div className="bg-card rounded-lg border shadow-sm p-6 space-y-4">
               <div className="flex items-center gap-4">
@@ -275,7 +380,7 @@ const ImportarKmPage: React.FC = () => {
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1"><FileSpreadsheet className="w-4 h-4" />{rows.length} linhas</span>
                     {pendingCount > 0 && <span className="text-primary">{pendingCount} pendentes</span>}
-                    {successCount > 0 && <span className="text-green-600">{successCount} atualizados</span>}
+                    {successCount > 0 && <span className="text-primary">{successCount} atualizados</span>}
                     {errorCount > 0 && <span className="text-destructive">{errorCount} erros</span>}
                   </div>
                 )}
@@ -304,7 +409,7 @@ const ImportarKmPage: React.FC = () => {
                         <TableRow key={i}>
                           <TableCell>
                             {row.status === 'pending' && <FileSpreadsheet className="w-4 h-4 text-muted-foreground" />}
-                            {row.status === 'success' && <Check className="w-4 h-4 text-green-600" />}
+                            {row.status === 'success' && <Check className="w-4 h-4 text-primary" />}
                             {row.status === 'error' && <AlertTriangle className="w-4 h-4 text-destructive" />}
                           </TableCell>
                           <TableCell className="font-mono font-semibold">{row.placa}</TableCell>
@@ -329,7 +434,6 @@ const ImportarKmPage: React.FC = () => {
             )}
           </TabsContent>
 
-          {/* ===== AUTOTRAC TAB ===== */}
           <TabsContent value="autotrac" className="space-y-4 mt-4">
             <div className="bg-card rounded-lg border shadow-sm p-6 space-y-4">
               <div className="flex items-center gap-4">
@@ -340,9 +444,9 @@ const ImportarKmPage: React.FC = () => {
                 {syncing && syncProgress.phase && (
                   <div className="flex-1 max-w-xs space-y-1">
                     <p className="text-xs text-muted-foreground">{syncProgress.phase}</p>
-                    <Progress 
-                      value={syncProgress.total > 0 ? (syncProgress.current / syncProgress.total) * 100 : undefined} 
-                      className="h-2" 
+                    <Progress
+                      value={syncProgress.total > 0 ? (syncProgress.current / syncProgress.total) * 100 : undefined}
+                      className="h-2"
                     />
                     {syncProgress.total > 0 && (
                       <p className="text-xs text-muted-foreground text-right">
@@ -370,7 +474,7 @@ const ImportarKmPage: React.FC = () => {
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span>{autotracRows.length} veículos</span>
                     {autotracPending > 0 && <span className="text-primary">{autotracPending} pendentes</span>}
-                    {autotracSuccess > 0 && <span className="text-green-600">{autotracSuccess} atualizados</span>}
+                    {autotracSuccess > 0 && <span className="text-primary">{autotracSuccess} atualizados</span>}
                     {autotracSkipped > 0 && <span className="text-muted-foreground">{autotracSkipped} ignorados</span>}
                     {autotracError > 0 && <span className="text-destructive">{autotracError} erros</span>}
                   </div>
@@ -400,7 +504,7 @@ const ImportarKmPage: React.FC = () => {
                         <TableRow key={i}>
                           <TableCell>
                             {row.status === 'pending' && <RefreshCw className="w-4 h-4 text-primary" />}
-                            {row.status === 'success' && <Check className="w-4 h-4 text-green-600" />}
+                            {row.status === 'success' && <Check className="w-4 h-4 text-primary" />}
                             {row.status === 'error' && <AlertTriangle className="w-4 h-4 text-destructive" />}
                             {row.status === 'skipped' && <X className="w-4 h-4 text-muted-foreground" />}
                           </TableCell>
