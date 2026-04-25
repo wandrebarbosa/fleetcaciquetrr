@@ -77,6 +77,7 @@ const VeiculosPage: React.FC = () => {
     const veiculo = veiculos.find(v => v.id === editId);
     const intervalo = veiculo?.intervalo_preventiva || 30000;
     await updateVeiculo(editId, {
+      codigo: editForm.codigo.trim(),
       tipo: editForm.tipo,
       filial_id: editForm.filialId,
       motorista_id: editForm.motoristaId || null,
