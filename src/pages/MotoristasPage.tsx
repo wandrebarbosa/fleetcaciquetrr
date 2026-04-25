@@ -38,7 +38,7 @@ const MotoristasPage: React.FC = () => {
   const openEdit = (m: typeof motoristas[0]) => {
     const veiculo = getVeiculoForMotorista(m.id);
     setEditId(m.id);
-    setEditForm({ telefone: m.telefone, filialId: m.filial_id || '', veiculoId: veiculo?.id || '' });
+    setEditForm({ codigo: m.codigo || '', telefone: m.telefone, filialId: m.filial_id || '', veiculoId: veiculo?.id || '' });
   };
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -47,6 +47,7 @@ const MotoristasPage: React.FC = () => {
 
     // Update motorista fields
     await updateMotorista(editId, {
+      codigo: editForm.codigo.trim(),
       telefone: editForm.telefone,
       filial_id: editForm.filialId || null,
     } as any);
