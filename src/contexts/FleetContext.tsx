@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 // Types matching the DB schema
 export interface Filial {
   id: string;
+  codigo: string;
   nome: string;
   cidade: string;
   estado: string;
@@ -12,6 +13,7 @@ export interface Filial {
 
 export interface Motorista {
   id: string;
+  codigo: string;
   nome: string;
   cpf: string;
   telefone: string;
@@ -20,12 +22,14 @@ export interface Motorista {
 
 export interface Servico {
   id: string;
+  codigo: string;
   nome: string;
   tipo: 'preventiva' | 'corretiva';
 }
 
 export interface Veiculo {
   id: string;
+  codigo: string;
   placa: string;
   tipo: string;
   filial_id: string | null;
