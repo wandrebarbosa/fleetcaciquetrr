@@ -163,6 +163,9 @@ const MotoristasPage: React.FC = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Editar Motorista</DialogTitle></DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
+            <div><Label>Código</Label>
+              <Input value={editForm.codigo} onChange={e => setEditForm(p => ({ ...p, codigo: e.target.value }))} placeholder="cod_motorista" />
+            </div>
             <div><Label>Telefone</Label>
               <Input value={editForm.telefone} onChange={e => setEditForm(p => ({ ...p, telefone: e.target.value }))} placeholder="(11) 99999-0000" />
             </div>
