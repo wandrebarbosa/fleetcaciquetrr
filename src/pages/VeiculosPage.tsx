@@ -36,6 +36,7 @@ const VeiculosPage: React.FC = () => {
     const kmUltimaPreventiva = Number(form.kmProximaPreventiva) || 0; // field reused as "última preventiva"
     await addVeiculo({
       placa: form.placa.trim().toUpperCase(),
+      codigo: form.codigo.trim(),
       tipo: form.tipo,
       filial_id: form.filialId,
       motorista_id: form.motoristaId || null,
@@ -47,12 +48,12 @@ const VeiculosPage: React.FC = () => {
     } as any);
     toast.success('Veículo cadastrado');
     setShowModal(false);
-    setForm({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
+    setForm({ codigo: '', placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
   };
 
   const openEdit = (v: typeof veiculos[0]) => {
     setEditId(v.id);
-    setEditForm({ tipo: v.tipo, filialId: v.filial_id || '', motoristaId: v.motorista_id || '', kmUltimaPreventiva: String(v.km_ultima_preventiva || 0) });
+    setEditForm({ codigo: v.codigo || '', tipo: v.tipo, filialId: v.filial_id || '', motoristaId: v.motorista_id || '', kmUltimaPreventiva: String(v.km_ultima_preventiva || 0) });
   };
 
   const handleEdit = async (e: React.FormEvent) => {
