@@ -283,9 +283,9 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       veiculos, manutencoes, filiais, motoristas, servicos, loading, refresh,
       addVeiculo, deleteVeiculo, updateVeiculo,
       addManutencao, finalizarManutencao,
-      addFilial, deleteFilial,
+      addFilial, deleteFilial, updateFilial,
       addMotorista, deleteMotorista, updateMotorista,
-      addServico, deleteServico,
+      addServico, deleteServico, updateServico,
     }}>
       {children}
     </FleetContext.Provider>
