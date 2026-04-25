@@ -16,19 +16,19 @@ const MotoristasPage: React.FC = () => {
   const { motoristas, filiais, veiculos, addMotorista, deleteMotorista, updateMotorista, updateVeiculo } = useFleet();
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState({ nome: '', cpf: '', telefone: '', filialId: '' });
+  const [form, setForm] = useState({ codigo: '', nome: '', cpf: '', telefone: '', filialId: '' });
 
   // Edit state
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ telefone: '', filialId: '', veiculoId: '' });
+  const [editForm, setEditForm] = useState({ codigo: '', telefone: '', filialId: '', veiculoId: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nome.trim() || !form.filialId) { toast.error('Preencha os campos obrigatórios'); return; }
-    await addMotorista({ nome: form.nome.trim(), cpf: form.cpf.trim(), telefone: form.telefone.trim(), filial_id: form.filialId });
+    await addMotorista({ nome: form.nome.trim(), codigo: form.codigo.trim(), cpf: form.cpf.trim(), telefone: form.telefone.trim(), filial_id: form.filialId });
     toast.success('Motorista cadastrado');
     setShowModal(false);
-    setForm({ nome: '', cpf: '', telefone: '', filialId: '' });
+    setForm({ codigo: '', nome: '', cpf: '', telefone: '', filialId: '' });
   };
 
   const getVeiculoForMotorista = (motoristaId: string) => {
