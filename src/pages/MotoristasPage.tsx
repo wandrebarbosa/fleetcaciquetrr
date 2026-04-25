@@ -16,19 +16,19 @@ const MotoristasPage: React.FC = () => {
   const { motoristas, filiais, veiculos, addMotorista, deleteMotorista, updateMotorista, updateVeiculo } = useFleet();
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState({ nome: '', cpf: '', telefone: '', filialId: '' });
+  const [form, setForm] = useState({ codigo: '', nome: '', cpf: '', telefone: '', filialId: '' });
 
   // Edit state
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ telefone: '', filialId: '', veiculoId: '' });
+  const [editForm, setEditForm] = useState({ codigo: '', telefone: '', filialId: '', veiculoId: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nome.trim() || !form.filialId) { toast.error('Preencha os campos obrigatórios'); return; }
-    await addMotorista({ nome: form.nome.trim(), cpf: form.cpf.trim(), telefone: form.telefone.trim(), filial_id: form.filialId });
+    await addMotorista({ nome: form.nome.trim(), codigo: form.codigo.trim(), cpf: form.cpf.trim(), telefone: form.telefone.trim(), filial_id: form.filialId });
     toast.success('Motorista cadastrado');
     setShowModal(false);
-    setForm({ nome: '', cpf: '', telefone: '', filialId: '' });
+    setForm({ codigo: '', nome: '', cpf: '', telefone: '', filialId: '' });
   };
 
   const getVeiculoForMotorista = (motoristaId: string) => {
@@ -38,7 +38,7 @@ const MotoristasPage: React.FC = () => {
   const openEdit = (m: typeof motoristas[0]) => {
     const veiculo = getVeiculoForMotorista(m.id);
     setEditId(m.id);
-    setEditForm({ telefone: m.telefone, filialId: m.filial_id || '', veiculoId: veiculo?.id || '' });
+    setEditForm({ codigo: m.codigo || '', telefone: m.telefone, filialId: m.filial_id || '', veiculoId: veiculo?.id || '' });
   };
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -47,6 +47,7 @@ const MotoristasPage: React.FC = () => {
 
     // Update motorista fields
     await updateMotorista(editId, {
+      codigo: editForm.codigo.trim(),
       telefone: editForm.telefone,
       filial_id: editForm.filialId || null,
     } as any);
@@ -95,6 +96,7 @@ const MotoristasPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                <TableHead>Código</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>CPF</TableHead>
                 <TableHead>Telefone</TableHead>
@@ -106,6 +108,7 @@ const MotoristasPage: React.FC = () => {
             <TableBody>
               {motoristas.map(m => (
                 <TableRow key={m.id}>
+                  <TableCell className="font-mono text-sm">{m.codigo || '—'}</TableCell>
                   <TableCell className="font-medium">{m.nome}</TableCell>
                   <TableCell className="font-mono text-sm">{m.cpf}</TableCell>
                   <TableCell>{m.telefone}</TableCell>
@@ -133,7 +136,10 @@ const MotoristasPage: React.FC = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Novo Motorista</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} required /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Código</Label><Input value={form.codigo} onChange={e => setForm(p => ({ ...p, codigo: e.target.value }))} placeholder="cod_motorista" /></div>
+              <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} required /></div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm(p => ({ ...p, cpf: e.target.value }))} placeholder="000.000.000-00" /></div>
               <div><Label>Telefone</Label><Input value={form.telefone} onChange={e => setForm(p => ({ ...p, telefone: e.target.value }))} placeholder="(11) 99999-0000" /></div>
@@ -157,6 +163,9 @@ const MotoristasPage: React.FC = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Editar Motorista</DialogTitle></DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
+            <div><Label>Código</Label>
+              <Input value={editForm.codigo} onChange={e => setEditForm(p => ({ ...p, codigo: e.target.value }))} placeholder="cod_motorista" />
+            </div>
             <div><Label>Telefone</Label>
               <Input value={editForm.telefone} onChange={e => setEditForm(p => ({ ...p, telefone: e.target.value }))} placeholder="(11) 99999-0000" />
             </div>

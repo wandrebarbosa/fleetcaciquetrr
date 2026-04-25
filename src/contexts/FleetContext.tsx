@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 // Types matching the DB schema
 export interface Filial {
   id: string;
+  codigo: string;
   nome: string;
   cidade: string;
   estado: string;
@@ -12,6 +13,7 @@ export interface Filial {
 
 export interface Motorista {
   id: string;
+  codigo: string;
   nome: string;
   cpf: string;
   telefone: string;
@@ -20,12 +22,14 @@ export interface Motorista {
 
 export interface Servico {
   id: string;
+  codigo: string;
   nome: string;
   tipo: 'preventiva' | 'corretiva';
 }
 
 export interface Veiculo {
   id: string;
+  codigo: string;
   placa: string;
   tipo: string;
   filial_id: string | null;
@@ -71,10 +75,12 @@ interface FleetContextType {
   finalizarManutencao: (id: string) => Promise<void>;
   addFilial: (f: Partial<Filial>) => Promise<void>;
   deleteFilial: (id: string) => Promise<void>;
+  updateFilial: (id: string, data: Partial<Filial>) => Promise<void>;
   addMotorista: (m: Partial<Motorista>) => Promise<void>;
   deleteMotorista: (id: string) => Promise<void>;
   addServico: (s: Partial<Servico>) => Promise<void>;
   deleteServico: (id: string) => Promise<void>;
+  updateServico: (id: string, data: Partial<Servico>) => Promise<void>;
   updateVeiculo: (id: string, data: Partial<Veiculo>) => Promise<void>;
   updateMotorista: (id: string, data: Partial<Motorista>) => Promise<void>;
 }
@@ -110,6 +116,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addVeiculo = useCallback(async (v: Partial<Veiculo>) => {
     const { error } = await supabase.from('frota_status_atual').insert({
       placa: v.placa!,
+      codigo: v.codigo || '',
       tipo: v.tipo || '',
       filial_id: v.filial_id || null,
       motorista_id: v.motorista_id || null,
@@ -191,7 +198,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [refresh, manutencoes, veiculos]);
 
   const addFilial = useCallback(async (f: Partial<Filial>) => {
-    const { error } = await supabase.from('filiais').insert({ nome: f.nome!, cidade: f.cidade || '', estado: f.estado || 'SP' });
+    const { error } = await supabase.from('filiais').insert({ nome: f.nome!, codigo: f.codigo || '', cidade: f.cidade || '', estado: f.estado || 'SP' });
     if (error) { toast.error(error.message); return; }
     await refresh();
   }, [refresh]);
@@ -202,8 +209,19 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await refresh();
   }, [refresh]);
 
+  const updateFilial = useCallback(async (id: string, data: Partial<Filial>) => {
+    const updateData: Record<string, unknown> = {};
+    if (data.codigo !== undefined) updateData.codigo = data.codigo;
+    if (data.nome !== undefined) updateData.nome = data.nome;
+    if (data.cidade !== undefined) updateData.cidade = data.cidade;
+    if (data.estado !== undefined) updateData.estado = data.estado;
+    const { error } = await supabase.from('filiais').update(updateData).eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
+
   const addMotorista = useCallback(async (m: Partial<Motorista>) => {
-    const { error } = await supabase.from('motoristas').insert({ nome: m.nome!, cpf: m.cpf || '', telefone: m.telefone || '', filial_id: m.filial_id || null });
+    const { error } = await supabase.from('motoristas').insert({ nome: m.nome!, codigo: m.codigo || '', cpf: m.cpf || '', telefone: m.telefone || '', filial_id: m.filial_id || null });
     if (error) { toast.error(error.message); return; }
     await refresh();
   }, [refresh]);
@@ -215,7 +233,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [refresh]);
 
   const addServico = useCallback(async (s: Partial<Servico>) => {
-    const { error } = await supabase.from('servicos').insert({ nome: s.nome!, tipo: s.tipo || 'preventiva' });
+    const { error } = await supabase.from('servicos').insert({ nome: s.nome!, codigo: s.codigo || '', tipo: s.tipo || 'preventiva' });
     if (error) { toast.error(error.message); return; }
     await refresh();
   }, [refresh]);
@@ -226,8 +244,19 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await refresh();
   }, [refresh]);
 
+  const updateServico = useCallback(async (id: string, data: Partial<Servico>) => {
+    const updateData: Record<string, unknown> = {};
+    if (data.codigo !== undefined) updateData.codigo = data.codigo;
+    if (data.nome !== undefined) updateData.nome = data.nome;
+    if (data.tipo !== undefined) updateData.tipo = data.tipo;
+    const { error } = await supabase.from('servicos').update(updateData).eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await refresh();
+  }, [refresh]);
+
   const updateVeiculo = useCallback(async (id: string, data: Partial<Veiculo>) => {
     const updateData: Record<string, unknown> = {};
+    if (data.codigo !== undefined) updateData.codigo = data.codigo;
     if (data.tipo !== undefined) updateData.tipo = data.tipo;
     if (data.filial_id !== undefined) updateData.filial_id = data.filial_id;
     if (data.motorista_id !== undefined) updateData.motorista_id = data.motorista_id || null;
@@ -241,6 +270,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateMotorista = useCallback(async (id: string, data: Partial<Motorista>) => {
     const updateData: Record<string, unknown> = {};
+    if (data.codigo !== undefined) updateData.codigo = data.codigo;
     if (data.telefone !== undefined) updateData.telefone = data.telefone;
     if (data.filial_id !== undefined) updateData.filial_id = data.filial_id || null;
     const { error } = await supabase.from('motoristas').update(updateData).eq('id', id);
@@ -253,9 +283,9 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       veiculos, manutencoes, filiais, motoristas, servicos, loading, refresh,
       addVeiculo, deleteVeiculo, updateVeiculo,
       addManutencao, finalizarManutencao,
-      addFilial, deleteFilial,
+      addFilial, deleteFilial, updateFilial,
       addMotorista, deleteMotorista, updateMotorista,
-      addServico, deleteServico,
+      addServico, deleteServico, updateServico,
     }}>
       {children}
     </FleetContext.Provider>

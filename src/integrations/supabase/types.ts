@@ -17,6 +17,7 @@ export type Database = {
       filiais: {
         Row: {
           cidade: string
+          codigo: string
           created_at: string
           estado: string
           id: string
@@ -24,6 +25,7 @@ export type Database = {
         }
         Insert: {
           cidade?: string
+          codigo?: string
           created_at?: string
           estado?: string
           id?: string
@@ -31,6 +33,7 @@ export type Database = {
         }
         Update: {
           cidade?: string
+          codigo?: string
           created_at?: string
           estado?: string
           id?: string
@@ -40,6 +43,7 @@ export type Database = {
       }
       frota_status_atual: {
         Row: {
+          codigo: string
           data_parada: string | null
           filial_id: string | null
           id: string
@@ -56,6 +60,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          codigo?: string
           data_parada?: string | null
           filial_id?: string | null
           id?: string
@@ -72,6 +77,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          codigo?: string
           data_parada?: string | null
           filial_id?: string | null
           id?: string
@@ -162,6 +168,7 @@ export type Database = {
       }
       motoristas: {
         Row: {
+          codigo: string
           cpf: string
           created_at: string
           filial_id: string | null
@@ -170,6 +177,7 @@ export type Database = {
           telefone: string
         }
         Insert: {
+          codigo?: string
           cpf?: string
           created_at?: string
           filial_id?: string | null
@@ -178,6 +186,7 @@ export type Database = {
           telefone?: string
         }
         Update: {
+          codigo?: string
           cpf?: string
           created_at?: string
           filial_id?: string | null
@@ -218,18 +227,21 @@ export type Database = {
       }
       servicos: {
         Row: {
+          codigo: string
           created_at: string
           id: string
           nome: string
           tipo: string
         }
         Insert: {
+          codigo?: string
           created_at?: string
           id?: string
           nome: string
           tipo?: string
         }
         Update: {
+          codigo?: string
           created_at?: string
           id?: string
           nome?: string

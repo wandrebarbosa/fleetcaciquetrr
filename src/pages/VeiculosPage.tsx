@@ -19,13 +19,13 @@ const VeiculosPage: React.FC = () => {
   const { veiculos, filiais, motoristas, addVeiculo, deleteVeiculo, updateVeiculo } = useFleet();
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
+  const [form, setForm] = useState({ codigo: '', placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   // Edit state
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ tipo: '', filialId: '', motoristaId: '', kmUltimaPreventiva: '' });
+  const [editForm, setEditForm] = useState({ codigo: '', tipo: '', filialId: '', motoristaId: '', kmUltimaPreventiva: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +36,7 @@ const VeiculosPage: React.FC = () => {
     const kmUltimaPreventiva = Number(form.kmProximaPreventiva) || 0; // field reused as "última preventiva"
     await addVeiculo({
       placa: form.placa.trim().toUpperCase(),
+      codigo: form.codigo.trim(),
       tipo: form.tipo,
       filial_id: form.filialId,
       motorista_id: form.motoristaId || null,
@@ -47,12 +48,12 @@ const VeiculosPage: React.FC = () => {
     } as any);
     toast.success('Veículo cadastrado');
     setShowModal(false);
-    setForm({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
+    setForm({ codigo: '', placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
   };
 
   const openEdit = (v: typeof veiculos[0]) => {
     setEditId(v.id);
-    setEditForm({ tipo: v.tipo, filialId: v.filial_id || '', motoristaId: v.motorista_id || '', kmUltimaPreventiva: String(v.km_ultima_preventiva || 0) });
+    setEditForm({ codigo: v.codigo || '', tipo: v.tipo, filialId: v.filial_id || '', motoristaId: v.motorista_id || '', kmUltimaPreventiva: String(v.km_ultima_preventiva || 0) });
   };
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -76,6 +77,7 @@ const VeiculosPage: React.FC = () => {
     const veiculo = veiculos.find(v => v.id === editId);
     const intervalo = veiculo?.intervalo_preventiva || 30000;
     await updateVeiculo(editId, {
+      codigo: editForm.codigo.trim(),
       tipo: editForm.tipo,
       filial_id: editForm.filialId,
       motorista_id: editForm.motoristaId || null,
@@ -118,6 +120,7 @@ const VeiculosPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                <TableHead>Código</TableHead>
                 <TableHead>Placa</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Filial</TableHead>
@@ -132,6 +135,7 @@ const VeiculosPage: React.FC = () => {
             <TableBody>
               {paginatedVeiculos.map(v => (
                 <TableRow key={v.id}>
+                  <TableCell className="font-mono text-sm">{v.codigo || '—'}</TableCell>
                   <TableCell className="font-mono font-semibold">{formatPlaca(v.placa)}</TableCell>
                   <TableCell>{v.tipo}</TableCell>
                   <TableCell>{filiais.find(f => f.id === v.filial_id)?.nome ?? '—'}</TableCell>
@@ -197,13 +201,14 @@ const VeiculosPage: React.FC = () => {
           <DialogHeader><DialogTitle>Novo Veículo</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
+              <div><Label>Código</Label><Input value={form.codigo} onChange={e => setForm(p => ({ ...p, codigo: e.target.value }))} placeholder="cod_placa" /></div>
               <div><Label>Placa *</Label><Input value={form.placa} onChange={e => setForm(p => ({ ...p, placa: e.target.value }))} placeholder="ABC1D23" required /></div>
-              <div><Label>Tipo</Label>
-                <Select value={form.tipo} onValueChange={v => setForm(p => ({ ...p, tipo: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{tiposVeiculo.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
+            </div>
+            <div><Label>Tipo</Label>
+              <Select value={form.tipo} onValueChange={v => setForm(p => ({ ...p, tipo: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{tiposVeiculo.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Filial *</Label>
@@ -237,6 +242,9 @@ const VeiculosPage: React.FC = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Editar Veículo</DialogTitle></DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
+            <div><Label>Código</Label>
+              <Input value={editForm.codigo} onChange={e => setEditForm(p => ({ ...p, codigo: e.target.value }))} placeholder="cod_placa" />
+            </div>
             <div><Label>Tipo</Label>
               <Select value={editForm.tipo} onValueChange={v => setEditForm(p => ({ ...p, tipo: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
