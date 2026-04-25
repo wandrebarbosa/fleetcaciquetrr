@@ -116,6 +116,7 @@ export const FleetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addVeiculo = useCallback(async (v: Partial<Veiculo>) => {
     const { error } = await supabase.from('frota_status_atual').insert({
       placa: v.placa!,
+      codigo: v.codigo || '',
       tipo: v.tipo || '',
       filial_id: v.filial_id || null,
       motorista_id: v.motorista_id || null,
