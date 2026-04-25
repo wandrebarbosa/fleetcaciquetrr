@@ -201,13 +201,14 @@ const VeiculosPage: React.FC = () => {
           <DialogHeader><DialogTitle>Novo Veículo</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
+              <div><Label>Código</Label><Input value={form.codigo} onChange={e => setForm(p => ({ ...p, codigo: e.target.value }))} placeholder="cod_placa" /></div>
               <div><Label>Placa *</Label><Input value={form.placa} onChange={e => setForm(p => ({ ...p, placa: e.target.value }))} placeholder="ABC1D23" required /></div>
-              <div><Label>Tipo</Label>
-                <Select value={form.tipo} onValueChange={v => setForm(p => ({ ...p, tipo: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{tiposVeiculo.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
+            </div>
+            <div><Label>Tipo</Label>
+              <Select value={form.tipo} onValueChange={v => setForm(p => ({ ...p, tipo: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{tiposVeiculo.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Filial *</Label>
