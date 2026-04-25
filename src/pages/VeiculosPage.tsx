@@ -242,6 +242,9 @@ const VeiculosPage: React.FC = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Editar Veículo</DialogTitle></DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
+            <div><Label>Código</Label>
+              <Input value={editForm.codigo} onChange={e => setEditForm(p => ({ ...p, codigo: e.target.value }))} placeholder="cod_placa" />
+            </div>
             <div><Label>Tipo</Label>
               <Select value={editForm.tipo} onValueChange={v => setEditForm(p => ({ ...p, tipo: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
