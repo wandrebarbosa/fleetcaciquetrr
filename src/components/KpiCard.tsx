@@ -10,23 +10,33 @@ interface KpiCardProps {
 }
 
 const variantStyles = {
-  primary: 'bg-primary text-primary-foreground',
-  success: 'bg-success text-success-foreground',
-  warning: 'bg-warning text-warning-foreground',
-  destructive: 'bg-destructive text-destructive-foreground',
-  info: 'bg-info text-info-foreground',
+  primary: 'from-primary/20 to-primary/5 text-primary ring-primary/20',
+  success: 'from-success/20 to-success/5 text-success ring-success/20',
+  warning: 'from-warning/20 to-warning/5 text-warning ring-warning/20',
+  destructive: 'from-destructive/20 to-destructive/5 text-destructive ring-destructive/20',
+  info: 'from-info/20 to-info/5 text-info ring-info/20',
+};
+
+const iconBgStyles = {
+  primary: 'bg-primary/10 text-primary',
+  success: 'bg-success/10 text-success',
+  warning: 'bg-warning/10 text-warning',
+  destructive: 'bg-destructive/10 text-destructive',
+  info: 'bg-info/10 text-info',
 };
 
 const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, variant, subtitle }) => {
   return (
-    <div className="bg-card rounded-lg border p-5 flex items-start gap-4 shadow-sm">
-      <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${variantStyles[variant]}`}>
-        <Icon className="w-6 h-6" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm text-muted-foreground font-medium">{title}</p>
-        <p className="text-2xl font-bold text-card-foreground mt-0.5">{value}</p>
-        {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+    <div className={`group relative overflow-hidden rounded-xl border bg-gradient-to-br ${variantStyles[variant]} p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:ring-1`}>
+      <div className="flex items-start gap-4">
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${iconBgStyles[variant]} transition-transform duration-300 group-hover:scale-110`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">{title}</p>
+          <p className="text-3xl font-extrabold text-card-foreground mt-1 tracking-tight">{value}</p>
+          {subtitle && <p className="text-xs text-muted-foreground/70 mt-1 font-medium">{subtitle}</p>}
+        </div>
       </div>
     </div>
   );

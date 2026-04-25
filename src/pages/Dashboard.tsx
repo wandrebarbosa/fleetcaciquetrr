@@ -78,9 +78,9 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard title="Total de Veículos" value={stats.total} icon={Truck} variant="primary" />
           <KpiCard title="Em Manutenção" value={stats.emManutencao} icon={Clock} variant="destructive" subtitle="Ocorrências abertas" />
-          <KpiCard title="Disponibilidade" value={`${stats.disponibilidade}%`} icon={CheckCircle} variant="success" />
           <KpiCard title="Preventiva Vencida" value={stats.preventivaVencida} icon={AlertTriangle} variant="destructive" subtitle="KM ultrapassado" />
           <KpiCard title="Próx. Preventiva" value={stats.proximaPreventiva} icon={Gauge} variant="warning" subtitle="< 5.000 km" />
+          <KpiCard title="Disponibilidade" value={`${stats.disponibilidade}%`} icon={CheckCircle} variant="success" />
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
