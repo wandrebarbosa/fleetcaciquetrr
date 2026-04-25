@@ -75,10 +75,12 @@ interface FleetContextType {
   finalizarManutencao: (id: string) => Promise<void>;
   addFilial: (f: Partial<Filial>) => Promise<void>;
   deleteFilial: (id: string) => Promise<void>;
+  updateFilial: (id: string, data: Partial<Filial>) => Promise<void>;
   addMotorista: (m: Partial<Motorista>) => Promise<void>;
   deleteMotorista: (id: string) => Promise<void>;
   addServico: (s: Partial<Servico>) => Promise<void>;
   deleteServico: (id: string) => Promise<void>;
+  updateServico: (id: string, data: Partial<Servico>) => Promise<void>;
   updateVeiculo: (id: string, data: Partial<Veiculo>) => Promise<void>;
   updateMotorista: (id: string, data: Partial<Motorista>) => Promise<void>;
 }
