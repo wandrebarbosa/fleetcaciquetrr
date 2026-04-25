@@ -120,6 +120,7 @@ const VeiculosPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                <TableHead>Código</TableHead>
                 <TableHead>Placa</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Filial</TableHead>
@@ -134,6 +135,7 @@ const VeiculosPage: React.FC = () => {
             <TableBody>
               {paginatedVeiculos.map(v => (
                 <TableRow key={v.id}>
+                  <TableCell className="font-mono text-sm">{v.codigo || '—'}</TableCell>
                   <TableCell className="font-mono font-semibold">{formatPlaca(v.placa)}</TableCell>
                   <TableCell>{v.tipo}</TableCell>
                   <TableCell>{filiais.find(f => f.id === v.filial_id)?.nome ?? '—'}</TableCell>
