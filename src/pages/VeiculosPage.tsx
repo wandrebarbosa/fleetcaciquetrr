@@ -19,13 +19,13 @@ const VeiculosPage: React.FC = () => {
   const { veiculos, filiais, motoristas, addVeiculo, deleteVeiculo, updateVeiculo } = useFleet();
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState({ placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
+  const [form, setForm] = useState({ codigo: '', placa: '', tipo: 'Carreta', filialId: '', motoristaId: '', kmAtual: '', kmProximaPreventiva: '', intervaloPreventiva: '30000' });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   // Edit state
   const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ tipo: '', filialId: '', motoristaId: '', kmUltimaPreventiva: '' });
+  const [editForm, setEditForm] = useState({ codigo: '', tipo: '', filialId: '', motoristaId: '', kmUltimaPreventiva: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
