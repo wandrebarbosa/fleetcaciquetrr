@@ -96,6 +96,7 @@ const MotoristasPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                <TableHead>Código</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>CPF</TableHead>
                 <TableHead>Telefone</TableHead>
@@ -107,6 +108,7 @@ const MotoristasPage: React.FC = () => {
             <TableBody>
               {motoristas.map(m => (
                 <TableRow key={m.id}>
+                  <TableCell className="font-mono text-sm">{m.codigo || '—'}</TableCell>
                   <TableCell className="font-medium">{m.nome}</TableCell>
                   <TableCell className="font-mono text-sm">{m.cpf}</TableCell>
                   <TableCell>{m.telefone}</TableCell>
