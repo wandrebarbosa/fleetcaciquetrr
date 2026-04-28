@@ -33,7 +33,11 @@ interface AutotracMatchedVehicle {
   placa: string;
 }
 
-const AUTOTRAC_FRONTEND_BATCH_SIZE = 3;
+const AUTOTRAC_FIRST_PASS_BATCH_SIZE = 5;
+const AUTOTRAC_FIRST_PASS_TIMEOUT_MS = 12000;
+const AUTOTRAC_RETRY_BATCH_SIZE = 1;
+const AUTOTRAC_RETRY_TIMEOUT_MS = 25000;
+const AUTOTRAC_MAX_RETRIES = 2;
 
 const parseCSV = (text: string): CsvRow[] => {
   const lines = text.trim().split(/\r?\n/);
