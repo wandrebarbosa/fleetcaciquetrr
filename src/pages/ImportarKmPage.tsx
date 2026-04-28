@@ -33,7 +33,11 @@ interface AutotracMatchedVehicle {
   placa: string;
 }
 
-const AUTOTRAC_FRONTEND_BATCH_SIZE = 3;
+const AUTOTRAC_FIRST_PASS_BATCH_SIZE = 5;
+const AUTOTRAC_FIRST_PASS_TIMEOUT_MS = 12000;
+const AUTOTRAC_RETRY_BATCH_SIZE = 1;
+const AUTOTRAC_RETRY_TIMEOUT_MS = 25000;
+const AUTOTRAC_MAX_RETRIES = 2;
 
 const parseCSV = (text: string): CsvRow[] => {
   const lines = text.trim().split(/\r?\n/);
@@ -168,43 +172,105 @@ const ImportarKmPage: React.FC = () => {
         return;
       }
 
-      const chunks = chunkArray(matchedVehicles, AUTOTRAC_FRONTEND_BATCH_SIZE);
-      const results: Array<{
+      type TelemetryResult = {
         vehicleName: string;
         vehicleCode: number;
         hodometerEnd: number | null;
         placa?: string;
         error?: string;
-      }> = [];
+        timeout?: boolean;
+      };
 
-      setSyncProgress({ current: 0, total: matchedVehicles.length, phase: 'Buscando telemetria dos veículos...' });
+      const resultsByCode = new Map<number, TelemetryResult>();
 
-      for (let i = 0; i < chunks.length; i++) {
-        const batch = chunks[i];
-        const { data: batchData, error: batchErr } = await supabase.functions.invoke('autotrac-sync', {
-          body: { action: 'sync-batch', accountCode, vehicles: batch },
+      const runPass = async (
+        toProcess: AutotracMatchedVehicle[],
+        batchSize: number,
+        timeoutMs: number,
+        phaseLabel: string,
+        progressOffset: number,
+        progressTotal: number
+      ) => {
+        const passChunks = chunkArray(toProcess, batchSize);
+        let processedInPass = 0;
+
+        for (const batch of passChunks) {
+          const { data: batchData, error: batchErr } = await supabase.functions.invoke('autotrac-sync', {
+            body: { action: 'sync-batch', accountCode, vehicles: batch, timeoutMs },
+          });
+
+          if (batchErr) {
+            for (const vehicle of batch) {
+              resultsByCode.set(vehicle.vehicleCode, {
+                vehicleName: vehicle.vehicleName,
+                vehicleCode: vehicle.vehicleCode,
+                placa: vehicle.placa,
+                hodometerEnd: null,
+                error: batchErr.message,
+                timeout: false,
+              });
+            }
+          } else {
+            const arr: TelemetryResult[] = Array.isArray(batchData) ? batchData : [];
+            for (const r of arr) {
+              resultsByCode.set(r.vehicleCode, r);
+            }
+          }
+
+          processedInPass += batch.length;
+          setSyncProgress({
+            current: Math.min(progressOffset + processedInPass, progressTotal),
+            total: progressTotal,
+            phase: phaseLabel,
+          });
+        }
+      };
+
+      // First pass: all vehicles in parallel batches
+      await runPass(
+        matchedVehicles,
+        AUTOTRAC_FIRST_PASS_BATCH_SIZE,
+        AUTOTRAC_FIRST_PASS_TIMEOUT_MS,
+        'Buscando telemetria dos veículos...',
+        0,
+        matchedVehicles.length
+      );
+
+      // Retry passes: re-process timeouts one by one with longer timeout
+      for (let attempt = 1; attempt <= AUTOTRAC_MAX_RETRIES; attempt++) {
+        const timedOut = matchedVehicles.filter((v) => {
+          const r = resultsByCode.get(v.vehicleCode);
+          return r?.timeout === true;
         });
 
-        if (batchErr) {
-          results.push(
-            ...batch.map(vehicle => ({
-              vehicleName: vehicle.vehicleName,
-              vehicleCode: vehicle.vehicleCode,
-              hodometerEnd: null,
-              placa: vehicle.placa,
-              error: batchErr.message,
-            }))
-          );
-        } else {
-          results.push(...(Array.isArray(batchData) ? batchData : []));
-        }
+        if (timedOut.length === 0) break;
 
         setSyncProgress({
-          current: Math.min((i + 1) * AUTOTRAC_FRONTEND_BATCH_SIZE, matchedVehicles.length),
-          total: matchedVehicles.length,
-          phase: 'Buscando telemetria dos veículos...',
+          current: 0,
+          total: timedOut.length,
+          phase: `Reprocessando ${timedOut.length} veículo(s) lentos (tentativa ${attempt}/${AUTOTRAC_MAX_RETRIES})...`,
         });
+
+        await runPass(
+          timedOut,
+          AUTOTRAC_RETRY_BATCH_SIZE,
+          AUTOTRAC_RETRY_TIMEOUT_MS,
+          `Reprocessando lentos (tentativa ${attempt}/${AUTOTRAC_MAX_RETRIES})...`,
+          0,
+          timedOut.length
+        );
       }
+
+      const results: TelemetryResult[] = matchedVehicles.map(
+        (v) =>
+          resultsByCode.get(v.vehicleCode) ?? {
+            vehicleName: v.vehicleName,
+            vehicleCode: v.vehicleCode,
+            placa: v.placa,
+            hodometerEnd: null,
+            error: 'Sem resposta',
+          }
+      );
 
       setSyncProgress({ current: matchedVehicles.length, total: matchedVehicles.length, phase: 'Processando resultados...' });
 
